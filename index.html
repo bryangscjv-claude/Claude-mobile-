@@ -56,28 +56,35 @@
   .zone.empty::before{content:"— no characters —"; color:var(--muted); font-size:11px; margin:auto;}
 
   .card{width:74px; height:104px; border-radius:8px; position:relative; flex:0 0 auto;
-    background:linear-gradient(165deg,#2a2140,#1c1530); border:1px solid #4a3a6a; padding:5px;
-    display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; cursor:pointer;
-    transition:transform .08s, box-shadow .08s;}
-  .card .color{position:absolute; top:0; left:0; right:0; height:4px;}
-  .card.purple .color{background:var(--purple);} .card.yellow .color{background:var(--yellow);}
-  .card.purpleyellow .color{background:linear-gradient(90deg,var(--purple),var(--yellow));}
-  .card .cost{position:absolute; top:4px; left:4px; width:18px; height:18px; border-radius:50%;
-    background:var(--purple); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; border:1px solid #fff3;}
-  .card.yellow .cost{background:var(--yellow); color:#3a2a00;}
-  .card .pw{position:absolute; bottom:4px; right:5px; font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 2px #000;}
-  .card .pw small{font-size:8px; color:var(--green);}
-  .card .nm{font-size:8.5px; line-height:1.05; margin-top:18px; font-weight:700;}
-  .card .tag{font-size:7px; color:var(--muted); margin-top:auto; margin-bottom:14px;}
-  .card .kw{position:absolute; top:4px; right:4px; font-size:7px; background:#000a; border-radius:4px; padding:1px 3px; color:var(--yellow);}
-  .card.char{border-color:#6a4aa0;}
-  .card.event{border-color:#a08; background:linear-gradient(165deg,#3a1f3a,#241528);}
+    background:linear-gradient(165deg,#2a2140,#1c1530); border:2px solid #6a4aa0; padding:3px;
+    display:flex; flex-direction:column; overflow:hidden; cursor:pointer;
+    transition:transform .08s, box-shadow .08s; box-shadow:0 2px 6px #0006;}
+  .card .cost{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; z-index:3;
+    background:radial-gradient(circle at 35% 30%,#b58bff,#5a2ad6); color:#fff; font-size:11px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; border:1.5px solid #fff; box-shadow:0 1px 3px #000a;}
+  .card .kw{position:absolute; top:3px; right:3px; z-index:3; font-size:7px; background:#000b; border:1px solid var(--gold);
+    border-radius:4px; padding:1px 3px; color:var(--gold); font-weight:700;}
+  /* art panel */
+  .card .art{position:relative; flex:1; border-radius:5px; margin-top:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(150deg,#3a2566 0%,#241640 55%,#16102a 100%);}
+  .card.event .art{background:linear-gradient(150deg,#4a2150 0%,#2a1530 60%,#180f1f 100%);}
+  .card .art img{width:100%; height:100%; object-fit:cover;}
+  .card .art .icon{font-size:30px; filter:drop-shadow(0 2px 3px #000a);}
+  .card .art::after{content:""; position:absolute; inset:0; box-shadow:inset 0 0 14px #0007; pointer-events:none;}
+  .card.char .art .typ{position:absolute; bottom:1px; left:0; right:0; text-align:center; font-size:6px; letter-spacing:.5px; color:#fff8; background:#0006;}
+  .card .pw{position:absolute; bottom:13px; right:3px; z-index:3; font-size:12px; font-weight:800; color:#fff;
+    text-shadow:0 1px 2px #000, 0 0 3px #000; background:#0007; border-radius:4px; padding:0 2px;}
+  .card .nm{font-size:8px; line-height:1.0; font-weight:700; text-align:center; padding:2px 1px 1px;
+    background:linear-gradient(180deg,#241a3a,#1a1228); min-height:14px; display:flex; align-items:center; justify-content:center;}
+  .card .donmark{position:absolute; bottom:14px; left:3px; z-index:3; font-size:8px; color:#9ef; font-weight:800; background:#0008; border-radius:3px; padding:0 2px;}
   .card.rested{transform:rotate(90deg) scale(.82); margin:10px 14px;}
-  .card.summon{box-shadow:0 0 0 2px #555 inset; opacity:.92;}
-  .card.canact{box-shadow:0 0 0 2px var(--green), 0 0 10px #39d98a55;}
+  .card.summon{filter:grayscale(.4); opacity:.9;}
+  .card.summon .art::before{content:"💤"; position:absolute; top:2px; left:50%; transform:translateX(-50%); z-index:2; font-size:11px;}
+  .card.canact{box-shadow:0 0 0 2px var(--green), 0 0 10px #39d98a66;}
   .card.selected{box-shadow:0 0 0 2px var(--yellow), 0 0 14px var(--yellow); transform:translateY(-4px);}
   .card.target{box-shadow:0 0 0 2px var(--red), 0 0 12px var(--red);}
-  .card .donmark{position:absolute; bottom:18px; left:4px; font-size:8px; color:var(--don); font-weight:700;}
+  .card.event{border-color:#b5479a;}
 
   .hand{display:flex; gap:6px; overflow-x:auto; padding:8px 4px; -webkit-overflow-scrolling:touch;}
   .hand .card{width:78px; height:110px;}
@@ -177,9 +184,9 @@
 
     <div class="phasebar" id="phasebar">
       <span data-ph="refresh">Refresh</span>
-      <span data-ph="don">DON</span>
+      <span data-ph="draw">Draw</span>
+      <span data-ph="don">DON!!</span>
       <span data-ph="main">Main</span>
-      <span data-ph="attack">Attack</span>
       <span data-ph="end">End</span>
     </div>
 
@@ -379,17 +386,22 @@ function startTurn(){
   if(p.leader.donAttached){ p.don.active+=p.leader.donAttached; p.leader.donAttached=0; }
   p.leader.power = 5000;                              // reset leader pump
   p.don.active += p.don.rested; p.don.rested=0;
-  S.phase="refresh"; render();
-  // draw (skip very first turn for the player on the play)
-  if(!(S.turn===1 && S.active==="you")){ draw(p,1); }
-  // DON phase: place from DON deck (2, or 1 on the very first turn)
+  const who = S.active==="you"?"me":"op";
+  // ── REFRESH PHASE ──
+  S.phase="refresh";
+  if(S.active==="you") logMsg("sys",`━━ YOUR TURN ${S.turn} ━━`);
+  // ── DRAW PHASE ── (the player on the play skips their first draw)
+  S.phase="draw";
+  if(S.turn===1 && S.active==="you"){ logMsg(who,"Draw Phase: skipped (you're on the play, turn 1)."); }
+  else { draw(p,1); logMsg(who,`Draw Phase: drew 1 card${S.active==="you"?` (hand ${p.hand.length})`:""}.`); }
+  // ── DON!! PHASE ── (place 2 DON!!; only 1 on the very first turn of the player on the play)
+  S.phase="don";
   const place = (S.turn===1 && S.active==="you") ? 1 : 2;
   const got=Math.min(place, p.don.deckCount); p.don.deckCount-=got; p.don.active+=got;
+  logMsg(who,`DON!! Phase: placed ${got} DON!! (now ${p.don.active} active, ${p.don.deckCount} left in DON deck).`);
+  // ── MAIN PHASE ──
   S.phase="main";
-  if(S.active==="you"){
-    coach(youCoachStart());
-    logMsg("me",`— Your turn ${S.turn} — drew & placed ${got} DON (now ${p.don.active} active).`);
-  }
+  if(S.active==="you") coach(youCoachStart());
   render();
   if(S.active==="opp"){ setTimeout(oppTurn, 650); }
 }
@@ -564,7 +576,7 @@ function declareAttack(att, def){
   }
   if(def.kind==="leader"){
     // damage leader: power vs 5000 (leaders always 'hit' for 1 life if >= their power? In OPTCG attacker needs >= defender power)
-    if(aPow>=op.leader.power){ dealLifeDamage(op,1, "op"); logMsg("me",`Hit opponent's Leader for 1 life!`); }
+    if(aPow>=op.leader.power){ logMsg("me",`Hit opponent's Leader!`); dealLifeDamage(op,1); }
     else { logMsg("me",`Attack too weak (${aPow} < ${op.leader.power}). Pump with DON next time.`); coach(`Your ${aPow} didn't reach 5000. <b>Attach DON</b> first so your attacks connect.`); }
   } else {
     const t=def.ref;
@@ -578,18 +590,18 @@ function declareAttack(att, def){
   S.sel=null; render(); checkWin();
 }
 
-function dealLifeDamage(p,n,who){
+/* OPTCG life rule: a connecting attack on a Leader with >=1 Life card removes 1 Life
+   card (it goes to that player's hand — the life-trigger step, simplified as a draw).
+   A connecting attack on a Leader with 0 Life cards loses the game. */
+function dealLifeDamage(p,n){
   for(let i=0;i<n;i++){
-    if(p.life<=0){ // no life: direct loss
-      finish(who==="op", who==="op"?"You dealt the finishing blow!":"You took lethal damage."); return;
-    }
-    p.life--;
-    if(p===S.you){ // you take a life card to hand (+possible trigger)
-      const card=S.you.deck.length? null:null;
-      // simplified: gain a card from deck top to hand as the life card
-      if(S.you.deck.length){ S.you.hand.push(S.you.deck.pop()); logMsg("op","You lost 1 life (card added to hand)."); }
+    if(p.life>0){
+      p.life--;
+      if(p===S.you){ if(S.you.deck.length) S.you.hand.push(S.you.deck.pop()); logMsg("op",`You took 1 damage — top Life card added to hand (Life ${p.life}).`); }
+      else { logMsg("me",`Opponent took 1 damage (Life ${p.life}).`); }
     } else {
-      logMsg("me","Opponent lost 1 life.");
+      finish(p===S.opp, p===S.opp ? "You broke through their last Life — you WIN!" : "Your Leader took damage with no Life left.");
+      return;
     }
   }
 }
@@ -613,8 +625,8 @@ function lethalInfo(){
   for(const d of deficits){ const need=Math.ceil(d/1000); if(don>=need){ don-=need; reachable++; } }
   const oppBlockers=op.field.filter(c=>c.kw&&c.kw.includes("Blocker")&&!c.rested).length;
   const hits=Math.max(0, reachable-oppBlockers);
-  const need=op.life;
-  return {hits, need, reachable, oppBlockers, canLethal: need>0 && hits>=need};
+  const need=op.life+1; // remove all Life cards, then one more connect wins (life is a buffer)
+  return {hits, need, reachable, oppBlockers, canLethal: hits>=need};
 }
 function renderLethal(){
   const el=document.getElementById("lethalBadge"); if(!el) return;
@@ -631,12 +643,7 @@ function renderLethal(){
   }
 }
 
-function checkWin(){
-  if(S.opp.life<=0 && S.opp._pendingLethal){ }
-  // win when opponent at 0 life AND took another hit -> handled in dealLifeDamage finish
-  if(S.opp.life<=0){ finish(true,"Opponent is out of life — you win!"); }
-  if(S.you.life<=0){ /* you may still survive at 0 until next hit; keep simple */ }
-}
+function checkWin(){ /* wins resolve inside dealLifeDamage when a hit lands at 0 Life */ }
 
 function finish(youWin,msg){
   if(S.over) return; S.over=true;
@@ -697,10 +704,9 @@ function oppAttacks(){
       render(); setTimeout(step,420); return;
     }
     if(a.pow>=me.leader.power){
-      me.life--; if(me.deck.length) me.hand.push(me.deck.pop());
-      logMsg("op",`Opponent hits YOU — life now ${me.life}.`);
-      if(me.life<0){ finish(false,"You ran out of life."); return; }
-    } else { logMsg("op","Opponent's attack bounced off your leader."); }
+      logMsg("op","Opponent hits YOUR Leader!"); dealLifeDamage(me,1);
+      if(S.over) return;
+    } else { logMsg("op","Opponent's attack bounced off your Leader."); }
     render(); setTimeout(step,420);
   }
   step();
@@ -724,27 +730,37 @@ function youCoachStart(){
 function coach(html){ document.getElementById("coachText").innerHTML=html; }
 
 /* ---------- RENDER ---------- */
+/* Thematic icon "art" per card (copyright-safe stand-in for official artwork). */
+const ICON={ pudding:"🍮", ohm:"🙏", satori:"🔮", shura:"🐎", franky:"🤖", law:"🗡️", reiju:"🌹",
+  senor:"💃", enel:"👑", elthor:"⚡", kiten:"🦅", ldragon:"🐉", varie:"🌩️", gamma:"🔪",
+  mamaragan:"☄️", divine:"🕊️" };
+/* OPTIONAL: paste your own image URLs here (cards you have the rights to) and they'll be used
+   instead of the icon. Example:  enel:"https://your-host/enel.png"   */
+const ART={};
+function oppIcon(c){ return (c.kw&&c.kw.includes("Blocker"))?"🛡️":"⚔️"; }
+
 function cardEl(c, side, inHand, idx){
-  const colorCls = c.color==="yellow"?"yellow":(c.color==="purpleyellow"?"purpleyellow":"purple");
   const el=document.createElement("div");
-  el.className=`card ${c.type==="event"?"event":"char"} ${colorCls}`;
+  el.className=`card ${c.type==="event"?"event":"char"} purple`;
   let cls="";
   if(!inHand && c.rested) cls+=" rested";
   if(!inHand && c.summon) cls+=" summon";
   if(!inHand && side==="you" && c.type!=="event" && !c.summon && !c.rested && S.active==="you" && !S.mode) cls+=" canact";
   if(S.sel && S.sel.kind==="char" && S.sel.ref===c) cls+=" selected";
-  if(S.mode&&S.mode.type==="event"&&side==="opp"){ // valid targets glow
-    cls+=" target";
-  }
+  if(S.mode&&S.mode.type==="event"&&side==="opp") cls+=" target";
   if(S.mode&&S.mode.type==="attach"&&side==="you") cls+=" canact";
   if(S.sel && side==="opp") cls+=" target";
   el.className+=cls;
   const kw = c.kw&&c.kw.length? `<div class="kw">${c.kw[0]}</div>`:"";
   const pw = c.type==="char"? `<div class="pw">${c.power}</div>`:"";
   const dm = (!inHand && c.attachShown)? `<div class="donmark">◆×${c.attachShown}</div>`:"";
-  el.innerHTML=`<div class="color"></div><div class="cost">${c.cost}</div>${kw}
-    <div class="nm">${c.name}</div><div class="tag">${c.type==="event"?"EVENT":"CHARACTER"}</div>${pw}${dm}`;
-  // handlers
+  const icon = ART[c.id] ? `<img src="${ART[c.id]}" alt="">`
+             : `<span class="icon">${(side==="opp"&&!ICON[c.id])?oppIcon(c):(ICON[c.id]||"⭐")}</span>`;
+  const typ = c.type==="char" ? `<span class="typ">CHARACTER</span>` : `<span class="typ">EVENT</span>`;
+  el.innerHTML=`<div class="cost">${c.cost}</div>${kw}
+    <div class="art">${icon}${typ}</div>
+    ${pw}${dm}
+    <div class="nm">${c.name}</div>`;
   if(inHand){ el.onclick=()=>clickHandCard(idx); }
   else { el.onclick=()=>clickFieldCard(side,c); }
   return el;
@@ -916,7 +932,18 @@ function GUIDE_HTML(){ return `
 <li><b>vs Aggro:</b> Trade early with El Thor/Gamma/Ohm, stabilize with a sticky Enel, and grind them out with superior card draw.</li>
 <li><b>vs Control / Big decks:</b> Be the aggressor. Spill bodies, draw relentlessly, and race their life before they set up. You refill faster than they can answer.</li>
 </ul>
+<h2>How the turn works (real OPTCG)</h2>
+<ol>
+<li><b>Refresh</b> — all your rested cards & DON!! stand back up; given DON!! return to you.</li>
+<li><b>Draw</b> — draw 1 card (the player going first <i>skips</i> their very first draw).</li>
+<li><b>DON!!</b> — place 2 DON!! from your DON!! deck (only 1 on the first player's first turn). Enel's DON!! deck is just 6.</li>
+<li><b>Main</b> — play cards, give DON!! to characters (+1000 each), and attack.</li>
+<li><b>End</b> — pass to your opponent.</li>
+</ol>
+<div class="tip">❤ <b>Life is a buffer, not a counter.</b> When your Leader is hit, the top Life card goes to your <b>hand</b> (that's the life-trigger step). You only LOSE when your Leader is hit while you have <b>0 Life</b> left — so beating someone on 2 Life needs <b>3</b> connecting hits. The ⚡ LETHAL badge already does this math for you.</div>
+<div class="tip">⚔ <b>Combat:</b> an attacker must be active (not rested) and rests when it attacks; it can hit the enemy <b>Leader</b> or a <b>rested</b> enemy Character. You KO/deal damage when your power is <b>≥</b> the defender's. A <b>Blocker</b> may rest to take the hit instead.</div>
 <div class="tip">✅ <b>Color check:</b> Every card is <b>purple</b> — Sky Island core + a small Heart Pirates package (Trafalgar Law &amp; Gamma Knife). Fully legal under the mono-purple Enel leader; no off-color cards.</div>
+<p class="small">Note: card faces use clean icon art, not Bandai's official artwork (that's copyrighted). If you have image files you're allowed to use, you can drop their URLs into the <code>ART</code> map at the top of the script and they'll show on the cards automatically.</p>
 `;}
 
 function DECK_HTML(){
