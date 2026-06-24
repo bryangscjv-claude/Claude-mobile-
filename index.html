@@ -121,6 +121,19 @@
   .modal h2{margin:0 0 8px;}
   .modal p{font-size:13px; color:var(--muted);}
 
+  /* ---- Tutorial ---- */
+  .tutbar{position:fixed; left:0; right:0; bottom:118px; z-index:55; padding:0 8px; display:none;}
+  .tutbar.show{display:block;}
+  .tutbox{max-width:544px; margin:0 auto; background:linear-gradient(120deg,#1b1340,#2a1147);
+    border:1px solid var(--purple2); border-radius:12px; padding:10px 12px; box-shadow:0 6px 24px #000a;}
+  .tutbox .tt{font-size:13px; font-weight:800; color:var(--purple2); margin-bottom:3px;}
+  .tutbox .tb{font-size:12.5px; line-height:1.45; color:#ece8f5;}
+  .tutbox .tb b{color:var(--yellow);}
+  .tutnav{display:flex; gap:6px; margin-top:8px; align-items:center;}
+  .tutnav .prog{font-size:10px; color:var(--muted); margin-right:auto;}
+  .tutnav button{background:var(--purple); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700;}
+  .tutnav button.g{background:var(--panel2); border:1px solid var(--line); color:var(--txt);}
+
   /* ---- Guide / Deck ---- */
   .doc h2{color:var(--yellow); font-size:16px; margin:16px 0 6px; border-bottom:1px solid var(--line); padding-bottom:4px;}
   .doc h3{color:var(--purple2); font-size:13.5px; margin:12px 0 4px;}
@@ -218,10 +231,22 @@
 <div class="controls" id="controls">
   <div class="btnrow" id="mainBtns"></div>
   <div class="btnrow">
+    <button class="act ghost" id="btnTut">🎓 Tutorial</button>
     <button class="act ghost" id="btnHelp">💡 Hint</button>
     <button class="act ghost" id="btnReset">↺ Restart</button>
   </div>
 </div>
+
+<div class="tutbar" id="tutbar"><div class="tutbox">
+  <div class="tt" id="tutTitle"></div>
+  <div class="tb" id="tutBody"></div>
+  <div class="tutnav">
+    <span class="prog" id="tutProg"></span>
+    <button class="g" id="tutBack">◀ Back</button>
+    <button class="g" id="tutExit">Exit</button>
+    <button id="tutNext">Next ▶</button>
+  </div>
+</div></div>
 
 <div class="toast" id="toast"></div>
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
@@ -237,63 +262,63 @@
    Engine: leader ramps + attaches DON; "DON!! −1" events draw a card AND
    return a DON to your 6-card DON deck, so you loop DON while disrupting. */
 const DB = {
-  // ---- characters (all purple) ----
-  satori:     {name:"Satori", type:"char", cost:1, power:2000, color:"purple", kw:[], qty:2,
-               role:"Setup/selection. On play, look at the top of your deck and reorder — fixes your draws.",
-               text:"[On Play] Look at top 2 cards; reorder them."},
-  oten:       {name:"Oten", type:"char", cost:2, power:2000, color:"purple", kw:[], qty:4,
-               role:"Turn-1/2 body to start attaching DON to. Cheap presence.",
-               text:"Early Sky Island body."},
-  franky:     {name:"Franky", type:"char", cost:3, power:5000, color:"purple", kw:[], qty:3,
-               role:"On-curve 5000 beater that pressures the leader early.",
-               text:"3-cost 5000 attacker."},
-  pudding:    {name:"Charlotte Pudding", type:"char", cost:4, power:2000, color:"purple", kw:["Draw"], qty:4,
-               role:"Card-advantage engine. Play it to refuel your hand so the DON loop keeps going.",
-               text:"[On Play] Draw 1 card."},
-  shura:      {name:"Shura", type:"char", cost:4, power:2000, color:"purple", kw:["Rush*"], qty:4,
-               role:"Surprise attacker: when you have FEWER DON than the opponent (often true with your 6-DON deck) it gains Rush and can swing the turn it's played.",
-               text:"If you have fewer DON!! than opponent, this gains [Rush]."},
-  reiju:      {name:"Vinsmoke Reiju", type:"char", cost:4, power:5000, color:"purple", kw:[], qty:4,
-               role:"Solid mid body and a great DON-attach target to threaten 7000+.",
+  // ---- characters (all purple, OP15 Sky Island + Heart Pirates) ----
+  pudding:    {name:"Charlotte Pudding", type:"char", cost:1, power:2000, color:"purple", kw:["Draw"], qty:4,
+               role:"Turn-1 dig. On Play (DON−1) look at the top 5 and add a card — fixes every draw.",
+               text:"[On Play] DON−1: look at top 5, add 1 to hand.", eff:"draw"},
+  ohm:        {name:"Ohm", type:"char", cost:1, power:2000, color:"purple", kw:["Draw"], qty:4,
+               role:"Cheap draw body. On Play DON−1 draw; when attacking it shrinks a blocker by −1000.",
+               text:"[On Play] DON−1: draw 1. [When Attacking] −1000 to an enemy.", eff:"draw"},
+  satori:     {name:"Satori", type:"char", cost:1, power:2000, color:"purple", kw:["Draw"], qty:2,
+               role:"Draw + deck-stacking. Smooths your next turns while adding a body.",
+               text:"[On Play] DON−1: draw 1; reorder your top cards.", eff:"draw"},
+  shura:      {name:"Shura", type:"char", cost:1, power:2000, color:"purple", kw:["Rush"], qty:4,
+               role:"★ Your tempo star: with ≤6 DON (almost always) it has RUSH — play it and attack the same turn — and it draws on play.",
+               text:"[Rush] if you have ≤6 DON. [On Play] DON−1: draw 1.", eff:"draw"},
+  franky:     {name:"Franky", type:"char", cost:4, power:5000, color:"purple", kw:[], qty:3,
+               role:"Mid beater and DON-attach target.",
                text:"4-cost 5000 body."},
   law:        {name:"Trafalgar Law", type:"char", cost:4, power:5000, color:"purple", kw:[], qty:2,
-               role:"Heart-Pirates beater that pairs with Gamma Knife for removal lines.",
+               role:"Heart-Pirates beater; pairs with Gamma Knife for removal.",
                text:"Heart Pirates 5000."},
-  enel:       {name:"Enel", type:"char", cost:6, power:7000, color:"purple", kw:[], qty:4,
-               role:"Your main threat. Gets +2000 from event triggers and loves DON attachments — easily a 9000-11000 attacker.",
-               text:"6-cost 7000 finisher body. Buffed by Varie/Kiton triggers."},
-  senor:      {name:"Senor Pink", type:"char", cost:5, power:6000, color:"purple", kw:["Blocker"], qty:2,
-               role:"Defensive Blocker to stabilize vs aggro. Hold it to absorb a big hit.",
-               text:"[Blocker] 6000 wall."},
-  // ---- events (all purple Sky Island / Heart Pirates) ----
-  kiton:      {name:"Lightning Beast Kiton", type:"event", cost:1, color:"purple", qty:4,
-               role:"Cheap DON-loop fuel: draw a card, return a DON to your deck, and shrink a blocker.",
-               text:"DON−1: draw 1; give 1 opp Character −1000 this turn. [Trigger] your Enel +2000.", eff:"draw_minus"},
+  reiju:      {name:"Vinsmoke Reiju", type:"char", cost:4, power:5000, color:"purple", kw:[], qty:4,
+               role:"Reliable 5000 body to hold the board and carry DON.",
+               text:"4-cost 5000 body."},
+  senor:      {name:"Senor Pink", type:"char", cost:5, power:6000, color:"purple", kw:[], qty:2,
+               role:"Value engine: On Play returns a Sky Island event from trash and ramps a DON — refuels late.",
+               text:"[On Play] DON−1: return a Sky Island event from trash; set 1 DON active."},
+  enel:       {name:"Enel", type:"char", cost:6, power:8000, color:"purple", kw:[], qty:4,
+               role:"Your finisher. While you have ≤4 DON it can't be removed by opponent effects — a sticky 8000 that ends games.",
+               text:"OP15-118. Can't be removed by opp effects if you have ≤4 DON. [On Play] effect."},
+  // ---- events (all purple; nearly all are cheap DON−1 'draw 1' engine pieces) ----
+  elthor:     {name:"El Thor", type:"event", cost:1, color:"purple", qty:4,
+               role:"Cheap combat/removal: +1000 to your attacker and KO a small (≤3000) enemy.",
+               text:"DON−1: a card +1000 this turn; KO 1 enemy with 3000 power or less.", eff:"ko_small"},
+  kiten:      {name:"Lightning Beast Kiten", type:"event", cost:1, color:"purple", qty:4,
+               role:"Draw + DON return + shrink a blocker by −1000. Pure engine fuel.",
+               text:"DON−1: draw 1; give 1 enemy −1000 this turn.", eff:"draw_minus"},
   ldragon:    {name:"Lightning Dragon", type:"event", cost:1, color:"purple", qty:4,
-               role:"Tempo / blocker removal. In the sim it KOs a small (cost ≤2) defender so your attacks connect.",
-               text:"DON−1 (Counter): opp's rested 6000-or-less Characters don't ready next turn. (sim: KO cost ≤2)", eff:"ko2"},
+               role:"Draw + DON return + tempo lock (a rested 6000-or-less enemy won't ready next turn).",
+               text:"DON−1: draw 1; a rested ≤6000 enemy won't un-rest next turn.", eff:"draw"},
+  varie:      {name:"Varie!! (200M Volt)", type:"event", cost:1, color:"purple", qty:3,
+               role:"Draw + DON return + set up next turn (give a Character +2 cost).",
+               text:"DON−1: draw 1; give a Character +2 cost. [Counter] your Enel +2000.", eff:"draw"},
   gamma:      {name:"Gamma Knife", type:"event", cost:2, color:"purple", qty:3,
-               role:"DON−1 removal. Return a DON to give −5000 — clears a blocker or trades up.",
-               text:"DON−1: give 1 opp Character −5000 this turn. [Trigger] ramp 1 active DON.", eff:"minus5"},
-  varie:      {name:"Varie!! (200M Volt)", type:"event", cost:3, color:"purple", qty:3,
-               role:"Draw + DON return + buff. Keeps your hand full and pumps an Enel.",
-               text:"DON−1: if Leader is Enel, draw 1; give a Character +2 cost. [Trigger] Enel +2000.", eff:"draw"},
-  elthor:     {name:"El Thor", type:"event", cost:4, color:"purple", qty:4,
-               role:"Premium removal. KO a real threat (cost ≤5 in the sim).",
-               text:"DON−1: KO 1 opp Character (cost ≤5). [Trigger] same.", eff:"ko5"},
-  divine:     {name:"Divine Departure", type:"event", cost:5, color:"purple", qty:1,
-               role:"Heavy removal. Rest a DON to slam a big character with −9000 (kills almost anything).",
-               text:"Rest 1 DON: give 1 opp Character −9000 power this turn.", eff:"minus9"},
-  mamaragan:  {name:"Mamaragan", type:"event", cost:6, color:"purple", qty:2,
-               role:"Finisher. Multi-KO their defense, then swing for the win.",
+               role:"DON−1 removal: −5000 clears a blocker or trades up. Ramps a DON on trigger.",
+               text:"DON−1: give 1 enemy −5000 this turn. [Trigger] set 1 DON active.", eff:"minus5"},
+  mamaragan:  {name:"Mamaragan", type:"event", cost:4, color:"purple", qty:2,
+               role:"Big finisher: clear up to 2 defenders, then alpha-strike for the win.",
                text:"K.O. up to 2 opp Characters.", eff:"ko_big"},
+  divine:     {name:"Divine Departure", type:"event", cost:6, color:"purple", qty:1,
+               role:"Heavy removal: rest 5 DON to slam a big threat with −9000.",
+               text:"Rest 5 DON: give 1 enemy −9000 this turn. [Counter] +3000 to your card.", eff:"minus9"},
 };
-/* counts total 50: chars 2+4+3+4+4+4+2+4+2 = 29, events 4+4+3+3+4+1+2 = 21 */
+/* Counts total 50: characters 4+4+2+4+3+2+4+2+4 = 29, events 4+4+4+3+3+2+1 = 21 */
 
 function buildDeck(){
   const d=[];
-  const counts={satori:2,oten:4,franky:3,pudding:4,shura:4,reiju:4,law:2,enel:4,senor:2,
-    kiton:4,ldragon:4,gamma:3,varie:3,elthor:4,divine:1,mamaragan:2};
+  const counts={pudding:4,ohm:4,satori:2,shura:4,franky:3,law:2,reiju:4,senor:2,enel:4,
+    elthor:4,kiten:4,ldragon:4,varie:3,gamma:3,mamaragan:2,divine:1};
   for(const k in counts){ for(let i=0;i<counts[k];i++) d.push({id:k, ...DB[k]}); }
   return d;
 }
@@ -397,8 +422,16 @@ function clickHandCard(idx){
     const ch={...c, rested:false, summon:true, don:0};
     S.you.field.push(ch); S.you.hand.splice(idx,1);
     logMsg("me",`Played ${c.name} (${c.power}).`);
-    if(c.id==="pudding"){ draw(S.you,1); logMsg("me","Pudding: drew 1."); }
-    coach(`<b>${c.name}</b> is down. New characters are <i>summoning-sick</i> — they can't attack this turn (only your Leader and characters played earlier can). Develop more, then attack.`);
+    // 1-cost draw bodies: On Play DON−1 → draw and recycle a DON
+    if(["pudding","ohm","satori","shura"].includes(c.id)){
+      draw(S.you,1); returnDon(S.you);
+      logMsg("me",`${c.name}: On Play drew 1 & recycled a DON (deck:${S.you.don.deckCount}).`);
+    }
+    if(c.id==="shura"){
+      coach(`<b>Shura</b> has <b>Rush</b> (you have ≤6 DON) — it can attack THIS turn. It also drew you a card. Attach DON and swing now for surprise damage.`);
+    } else {
+      coach(`<b>${c.name}</b> is down. New characters are <i>summoning-sick</i> — they can't attack this turn (Shura is the exception). Keep developing and drawing, then attack.`);
+    }
     render();
   } else {
     // event — needs DON / targets
@@ -408,14 +441,14 @@ function clickHandCard(idx){
 
 function payDon(p,n){ p.don.active-=n; p.don.rested+=n; }
 
-const DON_MINUS = ["kiton","ldragon","gamma","varie","elthor"]; // DON−1: return a DON to your deck
+const DON_MINUS = ["kiten","ldragon","gamma","varie","elthor"]; // DON−1: return a DON to your deck
 function returnDon(p){ if(p.don.rested>0){ p.don.rested--; p.don.deckCount++; } else if(p.don.active>0){ p.don.active--; p.don.deckCount++; } }
 
 function playEvent(idx,c){
   const p=S.you, foeP=S.opp;
   if(p.don.active < c.cost){ toast(`Need ${c.cost} DON for ${c.name}.`); return; }
 
-  const targeted = ["ko2","minus5","ko5","minus9","draw_minus"].includes(c.eff);
+  const targeted = ["ko_small","minus5","minus9","draw_minus"].includes(c.eff);
   const hasTarget = foeP.field.length>0;
   // draw_minus can resolve with no target (just the draw)
   if(targeted && hasTarget && c.eff!=="draw_minus" || (c.eff==="draw_minus"&&hasTarget)){
@@ -429,6 +462,7 @@ function playEvent(idx,c){
   if(DON_MINUS.includes(c.id)){ returnDon(p); logMsg("me",`(DON−1: returned a DON to your deck → ${p.don.deckCount} in deck)`); }
   p.hand.splice(idx,1); p.trash.push(c);
   if(c.eff==="draw"||c.eff==="draw_minus"){ draw(p,1); logMsg("me",`${c.name}: drew 1 card.`); coach("You drew and recycled a DON — that's the engine. Keep the loop going and apply pressure."); }
+  else if(c.eff==="ko_small"){ logMsg("me",`${c.name}: +1000 to a card (no small enemy to KO).`); coach("Used as a pump. El Thor also KOs an enemy with 3000 power or less when one's available."); }
   else if(c.eff==="ko_big"){ const k=foeP.field.slice().sort((a,b)=>b.power-a.power).slice(0,2); const n=k.length; k.forEach(t=>koChar(foeP,t)); logMsg("me",`Mamaragan: KO'd ${n} character(s)!`); coach("Finisher used. Swing for the win while their defenses are gone."); }
   render();
 }
@@ -438,8 +472,7 @@ function resolveEventTarget(targetChar){
   payDon(p,card.cost);
   if(DON_MINUS.includes(card.id)){ returnDon(p); }
   p.hand.splice(idx,1); p.trash.push(card);
-  if(card.eff==="ko2"){ if(targetChar.cost<=2){ koChar(foeP,targetChar); logMsg("me",`Lightning Dragon KO'd ${targetChar.name}.`);} else toast("Lightning Dragon hits cost ≤2 only."); }
-  else if(card.eff==="ko5"){ if(targetChar.cost<=5){ koChar(foeP,targetChar); logMsg("me",`El Thor KO'd ${targetChar.name}.`);} else toast("El Thor hits cost ≤5 only."); }
+  if(card.eff==="ko_small"){ if(targetChar.power<=3000){ koChar(foeP,targetChar); logMsg("me",`El Thor KO'd ${targetChar.name} (≤3000).`);} else { toast("El Thor KOs power ≤3000 only — used as +1000 pump instead."); logMsg("me","El Thor: +1000 (target too big to KO)."); } }
   else if(card.eff==="minus5"){ targetChar.power-=5000; if(targetChar.power<=0) koChar(foeP,targetChar); logMsg("me",`Gamma Knife: ${targetChar.name} −5000${targetChar.power<=0?" → KO'd":""}.`); }
   else if(card.eff==="minus9"){ targetChar.power-=9000; if(targetChar.power<=0) koChar(foeP,targetChar); logMsg("me",`Divine Departure: ${targetChar.name} −9000${targetChar.power<=0?" → KO'd":""}.`); }
   else if(card.eff==="draw_minus"){ draw(p,1); targetChar.power-=1000; if(targetChar.power<=0) koChar(foeP,targetChar); logMsg("me",`Kiton: drew 1, ${targetChar.name} −1000.`); }
@@ -471,9 +504,9 @@ function clickFieldCard(side, ch){
   if(S.mode&&S.mode.type==="event"&&side==="opp"){ resolveEventTarget(ch); return; }
   // selecting attacker (your char)
   if(side==="you"){
-    const myDon=S.you.don.active+S.you.don.rested, opDon=S.opp.don.active+S.opp.don.rested;
-    const shuraRush = ch.id==="shura" && myDon<opDon;
-    if(ch.summon && shuraRush){ toast("Shura has Rush (you have fewer DON) — it can attack!"); ch.summon=false; }
+    const myDon=S.you.don.active+S.you.don.rested+S.you.field.reduce((a,c)=>a+(c.attachShown||0),0);
+    const shuraRush = ch.id==="shura" && myDon<=6;
+    if(ch.summon && shuraRush){ toast("Shura has Rush (≤6 DON) — it can attack this turn!"); ch.summon=false; }
     if(ch.summon){ toast(`${ch.name} is summoning-sick this turn.`); return; }
     if(ch.rested){ toast(`${ch.name} already attacked / is rested.`); return; }
     S.sel={kind:"char",ref:ch}; coach(`Attacking with <b>${ch.name}</b> (${ch.power}). Tap the enemy Leader or a <i>rested</i> enemy character to hit it.`); render(); return;
@@ -601,14 +634,15 @@ function oppAttacks(){
 /* ---------- COACH TEXT ---------- */
 function youCoachStart(){
   const p=S.you;
-  if(S.turn===1) return `Turn 1: you have ${p.don.active} DON. <b>Develop a cheap body</b> (Satori / Oten / Franky) and pass. You can't attack on turn 1.`;
+  if(S.turn===1) return `Turn 1: you have ${p.don.active} DON. <b>Play a 1-cost draw body</b> (Pudding / Ohm / Satori / Shura) — they each draw a card. Build your hand, then pass. You can't attack on turn 1.`;
   const tips=[];
+  if(p.hand.some(c=>c.id==="shura")) tips.push("play <b>Shura</b> — it has Rush (≤6 DON), draws a card, and can attack now");
   if(!p.leader.abilityUsed) tips.push("use your <b>Leader Ramp ⚡</b> for extra DON");
-  if(p.hand.some(c=>["kiton","gamma","varie"].includes(c.id))) tips.push("fire a <b>DON−1 event</b> (Kiton/Gamma/Varie) to draw + recycle a DON");
+  if(p.hand.some(c=>["kiten","ldragon","varie","gamma","elthor"].includes(c.id))) tips.push("fire a <b>DON−1 event</b> (Kiten/Dragon/Varie/Gamma/El Thor) to draw + recycle a DON");
   tips.push("then <b>attach DON</b> to your attackers and swing");
-  if(S.opp.field.some(c=>c.kw&&c.kw.includes("Blocker"))) tips.push("⚠ they have a <b>Blocker</b> — remove it (Lightning Dragon / Gamma Knife / El Thor) before hitting the leader");
-  if(p.hand.some(c=>c.id==="shura") && (p.don.active+p.don.rested) < (S.opp.don.active+S.opp.don.rested)) tips.push("you have fewer DON — <b>Shura gets Rush</b>, play it and attack now");
+  if(S.opp.field.some(c=>c.kw&&c.kw.includes("Blocker"))) tips.push("⚠ they have a <b>Blocker</b> — clear it (Gamma Knife / El Thor / Mamaragan) before hitting the leader");
   if(p.don.deckCount===0) tips.push("DON deck empty — lean on DON−1 events to refill it");
+  if(p.hand.some(c=>c.id==="enel")&&p.don.active>=6) tips.push("you can land <b>Enel</b> (8000) — sticky finisher if you keep ≤4 DON after");
   if(S.opp.life<=2) tips.push("opponent is low — go for <b>lethal</b>: pump everything and swing leader + characters");
   return `Turn ${S.turn}: `+tips.join("; ")+".";
 }
@@ -709,74 +743,110 @@ document.querySelectorAll("nav button").forEach(btn=>{
 document.getElementById("btnReset").onclick=newGame;
 document.getElementById("btnHelp").onclick=()=>{ coach(youCoachStart()); toast("Coach updated ↑"); };
 
+/* ---------- TUTORIAL (optional step-by-step) ---------- */
+const TUT=[
+ {t:"Welcome to the Enel Trainer",b:"This 8-step walkthrough teaches the deck hands-on. The board is set to your <b>Enel</b> deck vs an AI. Read each step, do the action it asks on the real board, then press <b>Next ▶</b>. You can <b>Exit</b> anytime."},
+ {t:"1 · Read the board",b:"Top = opponent (Life, Hand, DON). Bottom = YOU: your Leader <b>Enel</b>, your <b>❤ Life</b>, your <b>◆ DON</b>, and your <b>hand</b>. Blue ◆ blocks are DON!! — your fuel. Your DON!! deck is only <b>6 cards</b>, so every DON matters."},
+ {t:"2 · Play a 1-cost draw body",b:"In your hand, tap a <b>1-cost</b> card (Pudding, Ohm, Satori, or <b>Shura</b>). They cost 1 DON and <b>draw you a card</b> on play. This is the engine — you'll play cheap cards that replace themselves every turn. Tap one now."},
+ {t:"3 · Shura's Rush",b:"<b>Shura</b> is special: with ≤6 DON (always, for you) it has <b>Rush</b> — it can attack the <i>same turn</i> you play it. If you have Shura, that's free early damage. Other new characters are 'summoning-sick' and must wait a turn."},
+ {t:"4 · Ramp with the Leader",b:"From turn 2, press <b>⚡ Leader Ramp</b> to set extra DON. You need DON to attach for power and to land Enel later. Press it now (if it's turn 1, press <b>End Turn ▶</b> first, then come back)."},
+ {t:"5 · Attach DON = +1000 each",b:"Press <b>◆ Attach DON</b>, then tap one of YOUR characters (or your Leader). Each DON you attach gives <b>+1000 power this turn</b>. Do this right before you attack, on the turn you want to push damage."},
+ {t:"6 · Clear blockers, then attack",b:"To attack: tap your <b>green-glowing</b> character (or Leader), then tap the enemy Leader. If they have a <b>Blocker</b>, remove it first with <b>Gamma Knife / El Thor / Mamaragan</b> — otherwise it eats your hit."},
+ {t:"7 · Land Enel, keep DON ≤4",b:"Your <b>Enel (8000)</b> finisher <b>can't be removed by opponent effects while you have ≤4 DON</b>. Drop it, don't over-ramp afterward, and it keeps swinging. Combine with attached DON for a 10000+ attacker."},
+ {t:"8 · Close it out",b:"When the opponent's Life is low, stop drawing for value: <b>ramp, attach every DON, and swing with everything</b>. That's the deck — cheap draws → tempo → sticky Enel → lethal. You're ready. Press <b>Exit</b> and play a full game; the gold Coach will keep guiding you."},
+];
+let tutStep=0;
+function startTutorial(){
+  // ensure we're on the Play tab
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.querySelector('nav button[data-view="play"]').classList.add("active");
+  document.getElementById("view-play").classList.add("active");
+  document.getElementById("controls").style.display="flex";
+  newGame(); tutStep=0; document.getElementById("tutbar").classList.add("show"); showTut();
+}
+function showTut(){
+  const s=TUT[tutStep];
+  document.getElementById("tutTitle").innerHTML=s.t;
+  document.getElementById("tutBody").innerHTML=s.b;
+  document.getElementById("tutProg").textContent=`Step ${tutStep+1} / ${TUT.length}`;
+  document.getElementById("tutBack").style.visibility = tutStep===0?"hidden":"visible";
+  document.getElementById("tutNext").textContent = tutStep===TUT.length-1?"Finish ✓":"Next ▶";
+}
+function exitTutorial(){ document.getElementById("tutbar").classList.remove("show"); coach(youCoachStart()); }
+document.getElementById("btnTut").onclick=startTutorial;
+document.getElementById("tutNext").onclick=()=>{ if(tutStep<TUT.length-1){tutStep++; showTut();} else exitTutorial(); };
+document.getElementById("tutBack").onclick=()=>{ if(tutStep>0){tutStep--; showTut();} };
+document.getElementById("tutExit").onclick=exitTutorial;
+
 /* ---------- GUIDE + DECK content ---------- */
 document.getElementById("view-guide").innerHTML = GUIDE_HTML();
 document.getElementById("view-deck").innerHTML = DECK_HTML();
 
 function GUIDE_HTML(){ return `
 <h2>The Enel Game Plan (in one line)</h2>
-<p><b>Loop your tiny 6-card DON deck: the Leader ramps and attaches DON, your cheap "DON−1" events draw cards and recycle DON back into the deck, and you control the board with purple removal until a DON-pumped Enel swings for the win.</b></p>
-<div class="tip">🟣 <b>Your identity: mono-PURPLE = DON!! manipulation.</b> Leader Enel (OP15-058) is built on one twist — your DON!! deck is only <b>6 cards</b>. The whole deck is engineered around making those 6 DON do the work of 10.</div>
+<p><b>Flood cheap 1-cost bodies that each draw a card, loop your 6-card DON!! deck with "DON−1" events to draw even more and recycle DON, pressure early with Shura's Rush, and close with a sticky 8000 Enel — all while drawing circles around the opponent.</b></p>
+<div class="tip">🟣 <b>Identity: mono-PURPLE consistency engine.</b> Leader Enel (OP15-058) has only a <b>6-card DON!! deck</b>, so you don't out-resource people — you out-<i>draw</i> and out-<i>tempo</i> them. Nearly every card says "DON−1: draw 1," so you see a huge chunk of your deck and almost never miss a play.</div>
 
 <h2>Why this deck is different</h2>
 <ul>
-<li><b>6-card DON!! deck.</b> You can never have more than 6 DON on the field. So you don't out-resource people — you out-<i>tempo</i> them. Every DON must earn value the same turn.</li>
-<li><b>The DON loop.</b> Most of your events say <b>"DON!! −1: If your Leader is Enel, draw 1…"</b>. They draw a card AND <i>return a DON to your deck</i>, so next turn you can set it again. Kiton, Lightning Dragon, Gamma Knife, Varie and El Thor are all engine pieces, not just spells.</li>
-<li><b>DON attaching = your damage.</b> The Leader ability rests up to 4 DON and gives them to your Characters — <b>+1000 power each for the turn</b>. A 7000 Enel with 3 DON swings for 10000.</li>
-<li><b>Shura's hidden Rush.</b> Because your DON deck is small, you usually have <i>fewer</i> DON than the opponent — which turns Shura on, letting it attack the turn it lands. Surprise damage.</li>
+<li><b>It's a draw machine.</b> Pudding, Ohm, Satori and Shura are all <b>1-cost 2000 bodies that draw a card on play</b>. El Thor, Kiten, Lightning Dragon and Varie are all <b>1-cost events that draw a card</b>. You'll often play 3–4 cards a turn and refill instantly.</li>
+<li><b>The DON loop.</b> Those "DON!! −1" cards <i>return a DON to your 6-card deck</i> as you play them, so you can keep setting DON every turn instead of running dry. Card draw + DON recycling is the whole engine.</li>
+<li><b>Shura is the star.</b> With ≤6 DON (basically always, since that's your max) Shura has <b>Rush</b> — play it and attack the same turn — and it draws. Free tempo and free damage.</li>
+<li><b>Enel is unkillable at the right time.</b> The 8000 Enel <b>can't be removed by opponent effects while you have ≤4 DON</b>. Land it, keep your DON count low, and it just keeps swinging.</li>
+<li><b>DON attaching = burst damage.</b> The Leader ability rests DON and gives them to Characters for <b>+1000 each this turn</b>. Save your attach for the turn you push for lethal.</li>
 </ul>
 
 <h2>The turn rhythm (do this every turn)</h2>
 <ol>
-<li><b>Refresh</b> — characters and all your DON ready up (attached DON come back).</li>
+<li><b>Refresh</b> — characters and all your DON ready up.</li>
 <li><b>Draw</b> 1.</li>
-<li><b>Leader Ramp ⚡</b> (from turn 2) — set extra DON from your deck.</li>
-<li><b>Develop</b> — play a body or two. New characters are <i>summoning-sick</i> (can't attack this turn) — except Shura when you're behind on DON.</li>
-<li><b>Run the engine</b> — fire a DON−1 event to draw, recycle a DON, and shrink/kill a blocker.</li>
-<li><b>Attach DON</b> to attackers, then <b>attack</b> the leader / rested characters.</li>
+<li><b>Leader Ramp ⚡</b> (from turn 2) — set extra DON when you need to cast Enel or push damage.</li>
+<li><b>Spill your cheap cards</b> — play 1-cost draw bodies and DON−1 events to dig deep and recycle DON. Don't hoard them.</li>
+<li><b>Clear the path</b> — Gamma Knife / El Thor / Mamaragan remove blockers before you swing.</li>
+<li><b>Attach DON &amp; attack</b> — Shura can swing the turn it lands; lead lethal turns by attaching DON.</li>
 <li><b>End.</b></li>
 </ol>
 
 <h2>When to use which card</h2>
 <table>
 <tr><th>Card</th><th>Use it when…</th></tr>
-<tr><td><b>Satori (1)</b></td><td>Early — fix your next draws so the engine flows. Also a cheap body to attach DON to.</td></tr>
-<tr><td><b>Oten (2) / Franky (3)</b></td><td>Turns 1–2. Always get a body down early to start pressuring and to attach DON.</td></tr>
-<tr><td><b>Charlotte Pudding (4)</b></td><td>Hand running low. The On-Play draw keeps the loop fed.</td></tr>
-<tr><td><b>Shura (4)</b></td><td>When you have FEWER DON than the opponent — it gets Rush and hits immediately for surprise damage.</td></tr>
-<tr><td><b>Reiju / Law / Enel</b></td><td>Mid-to-late beaters and DON-attach targets. Enel is your finisher body (7000 → 9000–11000 pumped).</td></tr>
-<tr><td><b>Lightning Beast Kiton (1)</b></td><td>Almost every turn — it draws, recycles a DON, and chips a blocker. Pure fuel.</td></tr>
-<tr><td><b>Lightning Dragon (1)</b></td><td>Tempo lock / clear a small (cost ≤2) defender so your attacks connect.</td></tr>
-<tr><td><b>Gamma Knife (2)</b></td><td>DON−1 −5000: clear a blocker or trade up into a mid body. Pairs with Law.</td></tr>
-<tr><td><b>Varie!! (3)</b></td><td>Draw + DON return + buff an Enel. Filler when you have a spare DON.</td></tr>
-<tr><td><b>El Thor (4)</b></td><td>Premium removal — KO a real threat (cost ≤5). Save for their key card.</td></tr>
-<tr><td><b>Divine Departure (5)</b></td><td>−9000 to delete a big finisher you can't out-power.</td></tr>
-<tr><td><b>Mamaragan (6)</b></td><td>Closer — multi-KO their defense, then swing for game.</td></tr>
-<tr><td><b>Senor Pink (5, Blocker)</b></td><td>Vs aggro — drop it to wall and protect your life while you set up.</td></tr>
+<tr><td><b>Pudding / Ohm / Satori (1)</b></td><td>Every early turn — free body + a card. Pudding digs deepest; Satori fixes your top; Ohm chips a blocker when it attacks.</td></tr>
+<tr><td><b>Shura (1)</b></td><td>Whenever you want damage — Rush + draw. Your best turn-1 play and a constant pressure tool.</td></tr>
+<tr><td><b>Franky / Law / Reiju (4)</b></td><td>Mid-game 5000 bodies to hold the board and carry attached DON.</td></tr>
+<tr><td><b>Senor Pink (5)</b></td><td>When your hand thins — On Play returns a used event from trash and ramps a DON. Late-game refuel.</td></tr>
+<tr><td><b>Enel (6, 8000)</b></td><td>Your finisher. Land it and keep ≤4 DON so it can't be removed.</td></tr>
+<tr><td><b>El Thor (1)</b></td><td>+1000 to push an attack through, and KO a small (≤3000) enemy. Cheap and flexible.</td></tr>
+<tr><td><b>Lightning Beast Kiten (1)</b></td><td>Draw + recycle + shrink a blocker −1000. Spam it.</td></tr>
+<tr><td><b>Lightning Dragon (1)</b></td><td>Draw + recycle + tempo lock (keep a rested defender from un-resting).</td></tr>
+<tr><td><b>Varie!! (1)</b></td><td>Draw + recycle + set up next turn (+2 cost on a Character). Engine glue.</td></tr>
+<tr><td><b>Gamma Knife (2)</b></td><td>−5000 removal to clear a blocker or trade up. Pairs with Law.</td></tr>
+<tr><td><b>Mamaragan (4)</b></td><td>Finisher — clear up to 2 defenders, then alpha-strike.</td></tr>
+<tr><td><b>Divine Departure (6)</b></td><td>−9000 to delete a huge threat you can't out-power.</td></tr>
 </table>
 
 <h2>Reading the board — decision triggers</h2>
-<div class="tip">🛡 <b>They have a Blocker?</b> Remove it FIRST (Lightning Dragon → Gamma Knife → El Thor by cost). Attacking into an open path is how Enel wins the tempo race.</div>
-<div class="tip">🔁 <b>Low on DON?</b> Lead with your DON−1 events (Kiton/Gamma/Varie) — they refund a DON and draw, keeping the engine alive. Don't dump all your DON on bodies and stall.</div>
-<div class="tip">🎯 <b>Opponent life ≤ 2?</b> Stop developing — go all-in. Ramp, attach every DON, swing Leader + all characters for lethal.</div>
-<div class="tip">⚔ <b>Fewer DON than them?</b> Good — that's Shura's Rush window. Drop it and swing the same turn.</div>
+<div class="tip">🛡 <b>They have a Blocker?</b> Clear it FIRST (Gamma Knife → El Thor → Mamaragan). Swinging into an open path is how you win the race.</div>
+<div class="tip">🃏 <b>Hand getting thin?</b> You're playing it wrong if it does — lead with your 1-cost draw cards every turn. Senor Pink reloads if you ever stall.</div>
+<div class="tip">⚡ <b>Want Enel to stick?</b> After playing it, keep your DON count at <b>4 or fewer</b> (don't over-ramp) so opponent removal can't touch it.</div>
+<div class="tip">🎯 <b>Opponent life ≤ 2?</b> Stop drawing for value — go all-in. Ramp, attach every DON, and swing Leader + all characters for lethal.</div>
 
 <h2>Mulligan (opening hand)</h2>
-<p>Keep hands with a <b>turn 1–2 play</b> (Satori, Oten, Franky) plus at least one <b>DON−1 engine event</b> (Kiton / Gamma Knife) so you can start looping. Toss hands that are all 4–6 drops — with a 6-DON deck you can't reliably power them out early.</p>
+<p>Keep almost any hand with a <b>1-cost play</b> (Shura is ideal) — you'll draw into everything else fast. Toss hands that are all 4–6 drops with no early plays. You don't need removal in your opener; you'll dig to it.</p>
 
 <h2>Matchup notes</h2>
 <ul>
-<li><b>vs Aggro:</b> Lead with Senor Pink (Blocker) + removal to trade, stabilize, then take over with Enel.</li>
-<li><b>vs Control / Big decks:</b> Be the aggressor. Loop DON, develop, and race their life before they stabilize. Don't over-extend into a board wipe — Pudding/Kiton refill, so play around it.</li>
+<li><b>vs Aggro:</b> Trade early with El Thor/Gamma/Ohm, stabilize with a sticky Enel, and grind them out with superior card draw.</li>
+<li><b>vs Control / Big decks:</b> Be the aggressor. Spill bodies, draw relentlessly, and race their life before they set up. You refill faster than they can answer.</li>
 </ul>
-<div class="tip">✅ <b>Color check:</b> Every card here is <b>purple</b> (Sky Island + a small Heart Pirates removal package: Trafalgar Law &amp; Gamma Knife). Fully legal under the mono-purple Enel leader — no off-color cards.</div>
+<div class="tip">✅ <b>Color check:</b> Every card is <b>purple</b> — Sky Island core + a small Heart Pirates package (Trafalgar Law &amp; Gamma Knife). Fully legal under the mono-purple Enel leader; no off-color cards.</div>
 `;}
 
 function DECK_HTML(){
-  const order=["satori","oten","franky","pudding","shura","reiju","law","enel","senor",
-    "kiton","ldragon","gamma","varie","elthor","divine","mamaragan"];
-  const counts={satori:2,oten:4,franky:3,pudding:4,shura:4,reiju:4,law:2,enel:4,senor:2,
-    kiton:4,ldragon:4,gamma:3,varie:3,elthor:4,divine:1,mamaragan:2};
+  const order=["pudding","ohm","satori","shura","franky","law","reiju","senor","enel",
+    "elthor","kiten","ldragon","varie","gamma","mamaragan","divine"];
+  const counts={pudding:4,ohm:4,satori:2,shura:4,franky:3,law:2,reiju:4,senor:2,enel:4,
+    elthor:4,kiten:4,ldragon:4,varie:3,gamma:3,mamaragan:2,divine:1};
   let chars="", events="";
   order.forEach(k=>{ const c=DB[k]; const colBadge = c.color==="yellow"?'<span class="badge b-y">Yellow</span>':'<span class="badge b-p">Purple</span>';
     const kw = c.kw&&c.kw.length?` <span class="badge b-c">${c.kw[0]}</span>`:"";
@@ -797,7 +867,7 @@ function DECK_HTML(){
   <div class="deckgrid">${chars}</div>
   <div class="sectionlabel">Events (${Object.keys(counts).filter(k=>DB[k].type==='event').reduce((a,k)=>a+counts[k],0)})</div>
   <div class="deckgrid">${events}</div>
-  <p class="small" style="margin-top:10px;">Main deck: ${total} cards. Names &amp; colors confirmed from your close-up photos (OP15 Purple Sky Island). Exact copy-counts are best reads — tweak in your deckbuilder to match your list precisely.</p>
+  <p class="small" style="margin-top:10px;">Main deck: <b>${total} cards</b>. Costs, names &amp; colors confirmed from your close-up photos (OP15 Purple Sky Island). Copy-counts taken from your deckbuilder editing view. Your two screenshots disagreed by a couple of copies (you were mid-edit) — if a number is off it's likely Mamaragan or a 2nd Enel print; fix it in one tap in your deckbuilder.</p>
   <div class="tip">✅ 100% purple — Sky Island core + a Heart Pirates removal splash (Trafalgar Law, Gamma Knife). Fully legal under the mono-purple Enel leader.</div>
   `;
 }
