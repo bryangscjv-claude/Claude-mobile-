@@ -174,6 +174,7 @@
   </header>
   <nav>
     <button data-view="play" class="active">▶ Play</button>
+    <button data-view="walk">📖 Learn</button>
     <button data-view="guide">📘 Strategy</button>
     <button data-view="deck">🃏 Deck</button>
   </nav>
@@ -225,6 +226,9 @@
 
     <div class="log" id="log"></div>
   </div>
+
+  <!-- ================= WALKTHROUGH ================= -->
+  <div class="view doc" id="view-walk"></div>
 
   <!-- ================= GUIDE ================= -->
   <div class="view doc" id="view-guide"></div>
@@ -873,8 +877,85 @@ document.getElementById("tutBack").onclick=()=>{ if(tutStep>0){tutStep--; showTu
 document.getElementById("tutExit").onclick=exitTutorial;
 
 /* ---------- GUIDE + DECK content ---------- */
+document.getElementById("view-walk").innerHTML = WALK_HTML();
 document.getElementById("view-guide").innerHTML = GUIDE_HTML();
 document.getElementById("view-deck").innerHTML = DECK_HTML();
+
+function miniCard(id,note){
+  const c=DB[id]; const ic=ICON[id]||"⭐";
+  const pw=c.type==="char"?`<span style="position:absolute;bottom:14px;right:3px;font-size:9px;font-weight:800;color:#fff;text-shadow:0 1px 2px #000">${c.power}</span>`:"";
+  return `<div style="display:inline-block;text-align:center;margin:3px">
+    <div style="position:relative;width:52px;height:72px;border:2px solid ${c.type==='event'?'#b5479a':'#6a4aa0'};border-radius:7px;
+      background:linear-gradient(150deg,#3a2566,#16102a);display:flex;flex-direction:column;overflow:hidden">
+      <div style="position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#b58bff,#5a2ad6);
+        color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1px solid #fff;z-index:2">${c.cost}</div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:22px">${ic}</div>${pw}
+      <div style="font-size:6.5px;font-weight:700;background:#1a1228;padding:2px 1px;min-height:12px;line-height:1.05">${c.name}</div>
+    </div>
+    ${note?`<div style="font-size:8px;color:var(--gold);max-width:58px;margin-top:2px;line-height:1.1">${note}</div>`:""}
+  </div>`;
+}
+function WALK_HTML(){ return `
+<h2>Learn by Example — a full game, step by step</h2>
+<p>This walks you through one game so the decisions click. Numbers match what the <b>Play</b> tab shows. You're <b>on the play</b> (going first).</p>
+
+<h3>Your opening hand (5 cards)</h3>
+<div style="text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px">
+  ${miniCard("shura","Rush + draw")}${miniCard("ohm","draw body")}${miniCard("kiten","draw event")}${miniCard("franky","5000 beater")}${miniCard("enel","finisher")}
+</div>
+<div class="tip">🟢 <b>Mulligan: KEEP.</b> Two 1-cost draw bodies (Shura, Ohm), an engine event (Kiten), a free-hitting 5000 body (Franky), and your finisher (Enel). You'll draw into the rest — that's the whole point of the deck.</div>
+
+<div class="tip" style="border-left-color:var(--purple2)">💡 <b>The one number that matters:</b> the enemy Leader has <b>5000</b> power. An attacker connects only if its power is <b>≥5000</b>. So your <b>5000 bodies (Franky/Reiju/Law) hit for FREE</b>, but a 2000 draw body needs <b>+3 DON</b> (3×1000) to reach 5000. Spend DON on damage that matters — don't pump 2000s every turn.</div>
+
+<h3>Turn 1 — you · 1 DON</h3>
+<ul>
+<li><b>Draw step:</b> skipped (you're on the play).</li>
+<li><b>DON step:</b> place 1 → you have 1 DON.</li>
+<li><b>Play Ohm</b> (1 DON) → it draws you a card. <b>Hold Shura</b> — its Rush is wasted now (a 2000 can't reach 5000, and you can't attack turn 1 anyway).</li>
+<li><b>End.</b> Board: Ohm. Hand stayed full.</li>
+</ul>
+<div class="tip">Turn 1 is simply "<b>free card + a body.</b>" Never burn Shura here.</div>
+
+<h3>Turn 2 — you · ~2 DON <span class="small">(opponent played a body last turn)</span></h3>
+<ul>
+<li><b>Draw</b> a card.</li>
+<li><b>Play Shura</b> (1 DON) → draws a card; it has Rush.</li>
+<li>You now have two 2000 bodies but only ~1 DON — not enough to push anyone to 5000. <b>Don't force a bad attack.</b> Pass with a fat hand.</li>
+</ul>
+<div class="tip">You're stockpiling cards and board. Damage comes once your 5000 bodies land.</div>
+
+<h3>Turn 3 — you · ~3 DON</h3>
+<ul>
+<li><b>Draw.</b> Still can't afford Franky (4). Play another 1-cost <b>draw event (Kiten)</b> → card + recycles a DON + shrinks a blocker if they have one.</li>
+<li><b>Decision — attack or not?</b> If the opponent has <b>no blocker</b>: attach <b>3 DON to Shura</b> (→5000) and hit the Leader for your first damage (their Life 5→4). If they <b>have a blocker</b>: <b>don't</b> — you'd just feed it. Hold.</li>
+</ul>
+<div class="tip">🛡 Removal goes on blockers <b>before</b> you attack — never swing into an unknown wall.</div>
+
+<h3>Turn 4 — you · ~5 DON</h3>
+<ul>
+<li><b>Play Franky</b> (4 DON) — a <b>5000 body that will attack the Leader for free</b> next turn.</li>
+<li>Keep chipping with pumped Shura/Ohm if you have spare DON and a clear path.</li>
+</ul>
+<div class="tip">Now your board has attackers that don't cost DON to connect. The game starts tilting your way.</div>
+
+<h3>Turn 5 — you · 6 DON → play Enel</h3>
+<ul>
+<li><b>Play Enel</b> (6 DON, 8000). You're now at <b>0 DON</b> — which is ≤4, so <b>Enel can't be removed</b> by their effects. It's a permanent 8000 threat.</li>
+<li>Next turns: <b>Franky (5000) + Enel (8000)</b> both swing the Leader for free; Shura/Ohm add chip damage.</li>
+</ul>
+<div class="tip">⚡ <b>Banking tip:</b> to reach 6 DON for Enel, play your <b>5000 bodies</b> (their DON comes back each turn) instead of recycling every draw card — recyclers send DON back to your deck and slow you down.</div>
+
+<h3>Turn 6+ — closing the game</h3>
+<ul>
+<li>Watch the <b>⚡ LETHAL</b> badge over the opponent's Life. It already does the math: with Life as a buffer you need <b>Life + 1</b> connecting hits.</li>
+<li>On the kill turn: <b>clear blockers</b> (Gamma Knife −5000, El Thor, Mamaragan), then <b>use Leader Ramp + attach DON</b> so enough attacks get through, and swing with everything.</li>
+</ul>
+<div class="tip">Example: opponent on <b>2 Life</b> with one Blocker. You need <b>3</b> hits through. You have Enel (8000), Franky (5000), Shura (2000). Kill the Blocker with Gamma Knife, pump Shura to 5000 with 3 DON, then Enel + Franky + Shura = 3 connects = <b>game.</b></div>
+
+<h3>The loop to internalize</h3>
+<p><b>Draw before you decide → develop bodies → clear blockers → land an unremovable Enel → pump &amp; swing for Life + 1.</b></p>
+<div class="tip">▶ Now open the <b>Play</b> tab, hit <b>🎓 Tutorial</b>, and run this exact pattern with the Coach guiding you.</div>
+`;}
 
 function GUIDE_HTML(){ return `
 <h2>The Enel Game Plan (in one line)</h2>
