@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Enel Deck Trainer — OPTCG Purple Enel Simulator</title>
+<style>
+  :root{
+    --bg:#0d0a14; --panel:#171122; --panel2:#1f1730; --line:#2e2342;
+    --purple:#7b3ff2; --purple2:#a06bff; --yellow:#f4c430; --gold:#e0b341;
+    --red:#ff5470; --green:#39d98a; --txt:#ece8f5; --muted:#9a8fb5;
+    --don:#27c2d6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  body{overscroll-behavior:none;}
+  .app{max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  header{padding:10px 12px; background:linear-gradient(120deg,#2a1147,#3a1d63 60%,#5a2a00);
+    border-bottom:1px solid var(--line); position:sticky; top:0; z-index:30;}
+  header h1{margin:0; font-size:16px; letter-spacing:.3px;}
+  header h1 .y{color:var(--yellow);} header h1 .p{color:var(--purple2);}
+  header .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  nav{display:flex; gap:4px; padding:6px; background:var(--panel); position:sticky; top:48px; z-index:29; border-bottom:1px solid var(--line);}
+  nav button{flex:1; background:var(--panel2); color:var(--muted); border:1px solid var(--line);
+    border-radius:9px; padding:9px 4px; font-size:12px; font-weight:600;}
+  nav button.active{background:var(--purple); color:#fff; border-color:var(--purple2);}
+  .view{display:none; padding:10px; flex:1;}
+  .view.active{display:block;}
+
+  /* ---- Board ---- */
+  .board{display:flex; flex-direction:column; gap:8px;}
+  .side{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px;}
+  .side.opp{background:linear-gradient(180deg,#1a1322,#160f1f);}
+  .side.you{background:linear-gradient(180deg,#160f1f,#1a1322);}
+  .rowflex{display:flex; align-items:center; gap:8px;}
+  .leadercard{width:62px; height:86px; border-radius:8px; flex:0 0 auto; position:relative;
+    background:linear-gradient(160deg,#5a2a8f,#3a1d63); border:2px solid var(--gold);
+    display:flex; flex-direction:column; justify-content:space-between; padding:4px; cursor:pointer;}
+  .leadercard.rested{transform:rotate(90deg) scale(.86); opacity:.85;}
+  .leadercard .lp{font-size:13px; font-weight:800; color:#fff; text-shadow:0 1px 2px #000;}
+  .leadercard .ln{font-size:9px; line-height:1.05; color:#ffe9b0;}
+  .stat{display:flex; flex-direction:column; gap:3px; font-size:11px;}
+  .pill{display:inline-flex; align-items:center; gap:4px; background:var(--panel2);
+    border:1px solid var(--line); border-radius:20px; padding:3px 8px; font-size:11px;}
+  .life{color:var(--red); font-weight:700;}
+  .donpill{color:var(--don); font-weight:700;}
+  .heart{color:var(--red);}
+  .lifebar{display:flex; gap:2px; margin-top:3px;}
+  .lifebar i{width:11px; height:14px; border-radius:2px; background:var(--red); opacity:.9; display:inline-block;}
+  .lifebar i.gone{background:#3a2a3a; opacity:.5;}
+
+  .zone{min-height:96px; margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;
+    background:repeating-linear-gradient(45deg,#150f20,#150f20 8px,#181222 8px,#181222 16px);
+    border:1px dashed var(--line); border-radius:10px; padding:6px;}
+  .zone.empty::before{content:"— no characters —"; color:var(--muted); font-size:11px; margin:auto;}
+
+  .card{width:74px; height:104px; border-radius:8px; position:relative; flex:0 0 auto;
+    background:linear-gradient(165deg,#2a2140,#1c1530); border:1px solid #4a3a6a; padding:5px;
+    display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; cursor:pointer;
+    transition:transform .08s, box-shadow .08s;}
+  .card .color{position:absolute; top:0; left:0; right:0; height:4px;}
+  .card.purple .color{background:var(--purple);} .card.yellow .color{background:var(--yellow);}
+  .card.purpleyellow .color{background:linear-gradient(90deg,var(--purple),var(--yellow));}
+  .card .cost{position:absolute; top:4px; left:4px; width:18px; height:18px; border-radius:50%;
+    background:var(--purple); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; border:1px solid #fff3;}
+  .card.yellow .cost{background:var(--yellow); color:#3a2a00;}
+  .card .pw{position:absolute; bottom:4px; right:5px; font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 2px #000;}
+  .card .pw small{font-size:8px; color:var(--green);}
+  .card .nm{font-size:8.5px; line-height:1.05; margin-top:18px; font-weight:700;}
+  .card .tag{font-size:7px; color:var(--muted); margin-top:auto; margin-bottom:14px;}
+  .card .kw{position:absolute; top:4px; right:4px; font-size:7px; background:#000a; border-radius:4px; padding:1px 3px; color:var(--yellow);}
+  .card.char{border-color:#6a4aa0;}
+  .card.event{border-color:#a08; background:linear-gradient(165deg,#3a1f3a,#241528);}
+  .card.rested{transform:rotate(90deg) scale(.82); margin:10px 14px;}
+  .card.summon{box-shadow:0 0 0 2px #555 inset; opacity:.92;}
+  .card.canact{box-shadow:0 0 0 2px var(--green), 0 0 10px #39d98a55;}
+  .card.selected{box-shadow:0 0 0 2px var(--yellow), 0 0 14px var(--yellow); transform:translateY(-4px);}
+  .card.target{box-shadow:0 0 0 2px var(--red), 0 0 12px var(--red);}
+  .card .donmark{position:absolute; bottom:18px; left:4px; font-size:8px; color:var(--don); font-weight:700;}
+
+  .hand{display:flex; gap:6px; overflow-x:auto; padding:8px 4px; -webkit-overflow-scrolling:touch;}
+  .hand .card{width:78px; height:110px;}
+
+  .donrow{display:flex; align-items:center; gap:4px; margin-top:6px; flex-wrap:wrap;}
+  .don{width:20px; height:28px; border-radius:4px; background:linear-gradient(160deg,#2ad,#178); border:1px solid #9ef; flex:0 0 auto;}
+  .don.rested{background:#2a4a55; border-color:#3a5a66; transform:rotate(25deg);}
+  .donlabel{font-size:10px; color:var(--don); font-weight:700; margin-right:4px;}
+
+  /* ---- Controls ---- */
+  .controls{position:sticky; bottom:0; background:var(--panel); border-top:1px solid var(--line);
+    padding:8px; display:flex; flex-direction:column; gap:6px; z-index:20;}
+  .btnrow{display:flex; gap:6px;}
+  button.act{flex:1; background:var(--purple); color:#fff; border:none; border-radius:10px;
+    padding:11px 6px; font-size:13px; font-weight:700; }
+  button.act:disabled{background:#2a2238; color:#5a4f6f;}
+  button.ghost{background:var(--panel2); border:1px solid var(--line); color:var(--txt);}
+  button.yel{background:var(--yellow); color:#3a2a00;}
+  button.danger{background:var(--red); color:#fff;}
+  .phasebar{display:flex; gap:4px; font-size:10px;}
+  .phasebar span{flex:1; text-align:center; padding:4px 2px; border-radius:6px; background:var(--panel2); color:var(--muted);}
+  .phasebar span.on{background:var(--purple); color:#fff; font-weight:700;}
+
+  .coach{background:linear-gradient(120deg,#241a3a,#2c1d1a); border:1px solid var(--gold);
+    border-radius:10px; padding:9px 10px; font-size:12.5px; line-height:1.4; margin-bottom:8px;}
+  .coach b{color:var(--yellow);}
+  .coach .who{font-size:10px; color:var(--gold); font-weight:800; letter-spacing:.5px; display:block; margin-bottom:2px;}
+
+  .log{background:#0a0710; border:1px solid var(--line); border-radius:8px; padding:6px 8px;
+    font-size:10.5px; color:var(--muted); max-height:70px; overflow-y:auto; margin-top:6px;}
+  .log div{padding:1px 0;} .log .me{color:var(--purple2);} .log .op{color:#e88;} .log .sys{color:var(--gold);}
+
+  .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:120px; background:#000d; color:#fff;
+    border:1px solid var(--gold); padding:8px 14px; border-radius:20px; font-size:12px; z-index:50; opacity:0; transition:opacity .2s; pointer-events:none; max-width:90%; text-align:center;}
+  .toast.show{opacity:1;}
+
+  /* overlay (win/lose, target prompt) */
+  .overlay{position:fixed; inset:0; background:#000c; display:none; align-items:center; justify-content:center; z-index:60; padding:20px;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--panel); border:1px solid var(--gold); border-radius:14px; padding:18px; max-width:340px; text-align:center;}
+  .modal h2{margin:0 0 8px;}
+  .modal p{font-size:13px; color:var(--muted);}
+
+  /* ---- Guide / Deck ---- */
+  .doc h2{color:var(--yellow); font-size:16px; margin:16px 0 6px; border-bottom:1px solid var(--line); padding-bottom:4px;}
+  .doc h3{color:var(--purple2); font-size:13.5px; margin:12px 0 4px;}
+  .doc p,.doc li{font-size:13px; line-height:1.55; color:#d8d2e8;}
+  .doc ul{padding-left:18px; margin:4px 0;}
+  .doc .tip{background:var(--panel2); border-left:3px solid var(--yellow); padding:8px 10px; border-radius:6px; margin:8px 0; font-size:12.5px;}
+  .doc table{width:100%; border-collapse:collapse; font-size:11.5px; margin:8px 0;}
+  .doc th,.doc td{border:1px solid var(--line); padding:5px 6px; text-align:left; vertical-align:top;}
+  .doc th{background:var(--panel2); color:var(--yellow);}
+  .deckgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+  .dcard{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px;}
+  .dcard .top{display:flex; justify-content:space-between; align-items:center;}
+  .dcard .nm{font-size:12px; font-weight:700;}
+  .dcard .meta{font-size:10px; color:var(--muted);}
+  .dcard .role{font-size:11px; color:#d8d2e8; margin-top:4px;}
+  .badge{font-size:9px; padding:2px 6px; border-radius:10px; font-weight:700;}
+  .b-p{background:#3a1d63; color:var(--purple2);} .b-y{background:#4a3a00; color:var(--yellow);}
+  .b-c{background:#143; color:var(--green);}
+  .qty{font-size:11px; font-weight:800; color:var(--gold);}
+  .sectionlabel{font-size:12px; color:var(--gold); font-weight:800; margin-top:14px;}
+  .legal{background:#2a1414; border:1px solid var(--red); border-radius:8px; padding:8px 10px; font-size:11.5px; margin-top:10px;}
+  .small{font-size:11px; color:var(--muted);}
+  footer{padding:14px; text-align:center; font-size:10px; color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>⚡ <span class="p">ENEL</span> Deck <span class="y">Trainer</span></h1>
+    <div class="sub">Purple/Yellow Sky-Island DON-ramp · interactive simulator + coach</div>
+  </header>
+  <nav>
+    <button data-view="play" class="active">▶ Play</button>
+    <button data-view="guide">📘 Strategy</button>
+    <button data-view="deck">🃏 Deck</button>
+  </nav>
+
+  <!-- ================= PLAY ================= -->
+  <div class="view active" id="view-play">
+    <div class="coach" id="coach"><span class="who">⚡ COACH</span><span id="coachText">Press <b>Start Game</b> to begin a practice match. I'll guide every decision.</span></div>
+
+    <div class="phasebar" id="phasebar">
+      <span data-ph="refresh">Refresh</span>
+      <span data-ph="don">DON</span>
+      <span data-ph="main">Main</span>
+      <span data-ph="attack">Attack</span>
+      <span data-ph="end">End</span>
+    </div>
+
+    <div class="board" id="board" style="margin-top:8px;">
+      <!-- OPPONENT -->
+      <div class="side opp">
+        <div class="rowflex">
+          <div class="leadercard" id="oppLeader"><div class="lp">5000</div><div class="ln">Opponent<br>Leader</div></div>
+          <div class="stat">
+            <span class="pill life">❤ Life <b id="oppLife">5</b></span>
+            <span class="pill">✋ Hand <b id="oppHand">0</b></span>
+            <span class="pill donpill">◆ DON <b id="oppDon">0</b></span>
+          </div>
+          <div class="lifebar" id="oppLifeBar"></div>
+        </div>
+        <div class="zone empty" id="oppField"></div>
+      </div>
+
+      <!-- YOU -->
+      <div class="side you">
+        <div class="zone empty" id="youField"></div>
+        <div class="rowflex" style="margin-top:8px;">
+          <div class="leadercard" id="youLeader"><div class="lp">5000</div><div class="ln">Enel<br>Sky Island</div></div>
+          <div class="stat">
+            <span class="pill life">❤ Life <b id="youLife">5</b></span>
+            <span class="pill donpill">◆ Active <b id="youDonA">0</b></span>
+            <span class="pill" style="color:var(--muted)">◇ Rested <b id="youDonR">0</b></span>
+          </div>
+          <div class="lifebar" id="youLifeBar"></div>
+        </div>
+        <div class="donrow" id="donRow"><span class="donlabel">DON!!</span></div>
+        <div class="hand" id="hand"></div>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <!-- ================= GUIDE ================= -->
+  <div class="view doc" id="view-guide"></div>
+
+  <!-- ================= DECK ================= -->
+  <div class="view doc" id="view-deck"></div>
+
+  <footer>Fan-made training tool · Not affiliated with Bandai · One Piece Card Game</footer>
+</div>
+
+<!-- sticky controls (only on play view) -->
+<div class="controls" id="controls">
+  <div class="btnrow" id="mainBtns"></div>
+  <div class="btnrow">
+    <button class="act ghost" id="btnHelp">💡 Hint</button>
+    <button class="act ghost" id="btnReset">↺ Restart</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ============================================================
+   ENEL DECK TRAINER  — simplified OPTCG engine for teaching
+   Color: Purple (DON ramp engine) + Yellow (lightning removal)
+   ============================================================ */
+
+/* ---------- CARD DATABASE — Purple "Enel" Sky Island (OP15) ----------
+   Every card is PURPLE and legal under leader Enel (OP15-058).
+   Engine: leader ramps + attaches DON; "DON!! −1" events draw a card AND
+   return a DON to your 6-card DON deck, so you loop DON while disrupting. */
+const DB = {
+  // ---- characters (all purple) ----
+  satori:     {name:"Satori", type:"char", cost:1, power:2000, color:"purple", kw:[], qty:2,
+               role:"Setup/selection. On play, look at the top of your deck and reorder — fixes your draws.",
+               text:"[On Play] Look at top 2 cards; reorder them."},
+  oten:       {name:"Oten", type:"char", cost:2, power:2000, color:"purple", kw:[], qty:4,
+               role:"Turn-1/2 body to start attaching DON to. Cheap presence.",
+               text:"Early Sky Island body."},
+  franky:     {name:"Franky", type:"char", cost:3, power:5000, color:"purple", kw:[], qty:3,
+               role:"On-curve 5000 beater that pressures the leader early.",
+               text:"3-cost 5000 attacker."},
+  pudding:    {name:"Charlotte Pudding", type:"char", cost:4, power:2000, color:"purple", kw:["Draw"], qty:4,
+               role:"Card-advantage engine. Play it to refuel your hand so the DON loop keeps going.",
+               text:"[On Play] Draw 1 card."},
+  shura:      {name:"Shura", type:"char", cost:4, power:2000, color:"purple", kw:["Rush*"], qty:4,
+               role:"Surprise attacker: when you have FEWER DON than the opponent (often true with your 6-DON deck) it gains Rush and can swing the turn it's played.",
+               text:"If you have fewer DON!! than opponent, this gains [Rush]."},
+  reiju:      {name:"Vinsmoke Reiju", type:"char", cost:4, power:5000, color:"purple", kw:[], qty:4,
+               role:"Solid mid body and a great DON-attach target to threaten 7000+.",
+               text:"4-cost 5000 body."},
+  law:        {name:"Trafalgar Law", type:"char", cost:4, power:5000, color:"purple", kw:[], qty:2,
+               role:"Heart-Pirates beater that pairs with Gamma Knife for removal lines.",
+               text:"Heart Pirates 5000."},
+  enel:       {name:"Enel", type:"char", cost:6, power:7000, color:"purple", kw:[], qty:4,
+               role:"Your main threat. Gets +2000 from event triggers and loves DON attachments — easily a 9000-11000 attacker.",
+               text:"6-cost 7000 finisher body. Buffed by Varie/Kiton triggers."},
+  senor:      {name:"Senor Pink", type:"char", cost:5, power:6000, color:"purple", kw:["Blocker"], qty:2,
+               role:"Defensive Blocker to stabilize vs aggro. Hold it to absorb a big hit.",
+               text:"[Blocker] 6000 wall."},
+  // ---- events (all purple Sky Island / Heart Pirates) ----
+  kiton:      {name:"Lightning Beast Kiton", type:"event", cost:1, color:"purple", qty:4,
+               role:"Cheap DON-loop fuel: draw a card, return a DON to your deck, and shrink a blocker.",
+               text:"DON−1: draw 1; give 1 opp Character −1000 this turn. [Trigger] your Enel +2000.", eff:"draw_minus"},
+  ldragon:    {name:"Lightning Dragon", type:"event", cost:1, color:"purple", qty:4,
+               role:"Tempo / blocker removal. In the sim it KOs a small (cost ≤2) defender so your attacks connect.",
+               text:"DON−1 (Counter): opp's rested 6000-or-less Characters don't ready next turn. (sim: KO cost ≤2)", eff:"ko2"},
+  gamma:      {name:"Gamma Knife", type:"event", cost:2, color:"purple", qty:3,
+               role:"DON−1 removal. Return a DON to give −5000 — clears a blocker or trades up.",
+               text:"DON−1: give 1 opp Character −5000 this turn. [Trigger] ramp 1 active DON.", eff:"minus5"},
+  varie:      {name:"Varie!! (200M Volt)", type:"event", cost:3, color:"purple", qty:3,
+               role:"Draw + DON return + buff. Keeps your hand full and pumps an Enel.",
+               text:"DON−1: if Leader is Enel, draw 1; give a Character +2 cost. [Trigger] Enel +2000.", eff:"draw"},
+  elthor:     {name:"El Thor", type:"event", cost:4, color:"purple", qty:4,
+               role:"Premium removal. KO a real threat (cost ≤5 in the sim).",
+               text:"DON−1: KO 1 opp Character (cost ≤5). [Trigger] same.", eff:"ko5"},
+  divine:     {name:"Divine Departure", type:"event", cost:5, color:"purple", qty:1,
+               role:"Heavy removal. Rest a DON to slam a big character with −9000 (kills almost anything).",
+               text:"Rest 1 DON: give 1 opp Character −9000 power this turn.", eff:"minus9"},
+  mamaragan:  {name:"Mamaragan", type:"event", cost:6, color:"purple", qty:2,
+               role:"Finisher. Multi-KO their defense, then swing for the win.",
+               text:"K.O. up to 2 opp Characters.", eff:"ko_big"},
+};
+/* counts total 50: chars 2+4+3+4+4+4+2+4+2 = 29, events 4+4+3+3+4+1+2 = 21 */
+
+function buildDeck(){
+  const d=[];
+  const counts={satori:2,oten:4,franky:3,pudding:4,shura:4,reiju:4,law:2,enel:4,senor:2,
+    kiton:4,ldragon:4,gamma:3,varie:3,elthor:4,divine:1,mamaragan:2};
+  for(const k in counts){ for(let i=0;i<counts[k];i++) d.push({id:k, ...DB[k]}); }
+  return d;
+}
+
+/* ---------- OPPONENT (generic deck so you can practice) ---------- */
+function oppDeck(){
+  const proto=[
+    {name:"Scout",cost:2,power:3000,kw:[]},
+    {name:"Guard",cost:3,power:4000,kw:["Blocker"]},
+    {name:"Bruiser",cost:4,power:6000,kw:[]},
+    {name:"Sentinel",cost:5,power:7000,kw:["Blocker"]},
+    {name:"Vanguard",cost:3,power:5000,kw:[]},
+    {name:"Titan",cost:6,power:8000,kw:[]},
+  ];
+  const d=[]; for(let i=0;i<40;i++){const p=proto[i%proto.length]; d.push({id:"opp"+i,type:"char",color:"purple",...p});}
+  return d;
+}
+
+/* ---------- STATE ---------- */
+let S=null;
+function uid(){ uid.n=(uid.n||0)+1; return "u"+uid.n; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(simRand()* (i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+// deterministic-ish RNG so behavior is repeatable enough but varied
+let _seed=12345; function simRand(){ _seed=(_seed*1103515245+12345)&0x7fffffff; return _seed/0x7fffffff; }
+
+function newGame(){
+  _seed = Math.floor(Date.now()%100000)+1;
+  const youDeck=shuffle(buildDeck()).map(c=>({uid:uid(),...c}));
+  const oDeck=shuffle(oppDeck()).map(c=>({uid:uid(),...c}));
+  S={
+    turn:1, active:"you", phase:"refresh", over:false, firstTurn:true,
+    you:{ leader:{name:"Enel",power:5000,rested:false,abilityUsed:false}, life:5,
+          hand:[], field:[], deck:youDeck, trash:[],
+          don:{active:0, rested:0, deckCount:6} },   // Enel OP15-058: DON!! deck = 6 cards
+    opp:{ leader:{name:"Opponent",power:5000,rested:false}, life:5,
+          hand:[], field:[], deck:oDeck, trash:[],
+          don:{active:0, rested:0, deckCount:10} },
+    sel:null, mode:null, log:[],
+  };
+  // opening hands
+  for(let i=0;i<5;i++){ S.you.hand.push(S.you.deck.pop()); S.opp.hand.push(S.opp.deck.pop()); }
+  logMsg("sys","New game! You are on the play as Enel (Purple/Yellow).");
+  startTurn();
+}
+
+/* ---------- TURN FLOW ---------- */
+function startTurn(){
+  const p=cur();
+  p.leader.rested=false; p.leader.abilityUsed=false;
+  // refresh: ready chars, return attached DON to active, rested->active
+  p.field.forEach(c=>{ c.rested=false; if(c.summon) c.summon=false; if(c.don){ p.don.active+=c.don; c.don=0; } });
+  p.don.active += p.don.rested; p.don.rested=0;
+  S.phase="refresh"; render();
+  // draw (skip very first turn for the player on the play)
+  if(!(S.turn===1 && S.active==="you")){ draw(p,1); }
+  // DON phase: place from DON deck (2, or 1 on the very first turn)
+  const place = (S.turn===1 && S.active==="you") ? 1 : 2;
+  const got=Math.min(place, p.don.deckCount); p.don.deckCount-=got; p.don.active+=got;
+  S.phase="main";
+  if(S.active==="you"){
+    coach(youCoachStart());
+    logMsg("me",`— Your turn ${S.turn} — drew & placed ${got} DON (now ${p.don.active} active).`);
+  }
+  render();
+  if(S.active==="opp"){ setTimeout(oppTurn, 650); }
+}
+
+function endTurn(){
+  if(S.over) return;
+  S.sel=null; S.mode=null;
+  if(S.active==="you"){ S.active="opp"; }
+  else { S.active="you"; S.turn++; S.firstTurn=false; }
+  startTurn();
+}
+
+function cur(){ return S.active==="you"?S.you:S.opp; }
+function foe(){ return S.active==="you"?S.opp:S.you; }
+function draw(p,n){ for(let i=0;i<n;i++){ if(p.deck.length===0){ /* deckout */ if(p===S.you) finish(false,"You decked out!"); else finish(true,"Opponent decked out!"); return;} p.hand.push(p.deck.pop()); } }
+
+/* ---------- PLAYER ACTIONS ---------- */
+function useLeaderAbility(){
+  const p=S.you;
+  if(p.leader.abilityUsed){ toast("Leader ability already used this turn."); return; }
+  if(S.turn<2){ toast("Leader ability works from your 2nd turn onward."); return; }
+  // Signature ramp: add up to 2 extra DON active (capped by DON deck)
+  const got=Math.min(2,p.don.deckCount);
+  if(got===0){ toast("DON!! deck is empty — that's the Enel trade-off."); return; }
+  p.don.deckCount-=got; p.don.active+=got; p.leader.abilityUsed=true;
+  logMsg("me",`⚡ Leader ability: ramped +${got} DON (now ${p.don.active}). Attach them to swing big!`);
+  coach(`You ramped with Enel. <b>Now attach DON to your attackers</b> (tap a character, then tap a DON) to push their power up, then attack. Remember the DON deck is small — make these count.`);
+  render();
+}
+
+function clickHandCard(idx){
+  if(S.active!=="you"||S.over) return;
+  const c=S.you.hand[idx];
+  if(c.type==="char"){
+    if(S.you.field.length>=6){ toast("Board is full (6)."); return; }
+    if(S.you.don.active < c.cost){ toast(`Need ${c.cost} DON (have ${S.you.don.active}).`); return; }
+    payDon(S.you,c.cost);
+    const ch={...c, rested:false, summon:true, don:0};
+    S.you.field.push(ch); S.you.hand.splice(idx,1);
+    logMsg("me",`Played ${c.name} (${c.power}).`);
+    if(c.id==="pudding"){ draw(S.you,1); logMsg("me","Pudding: drew 1."); }
+    coach(`<b>${c.name}</b> is down. New characters are <i>summoning-sick</i> — they can't attack this turn (only your Leader and characters played earlier can). Develop more, then attack.`);
+    render();
+  } else {
+    // event — needs DON / targets
+    playEvent(idx,c);
+  }
+}
+
+function payDon(p,n){ p.don.active-=n; p.don.rested+=n; }
+
+const DON_MINUS = ["kiton","ldragon","gamma","varie","elthor"]; // DON−1: return a DON to your deck
+function returnDon(p){ if(p.don.rested>0){ p.don.rested--; p.don.deckCount++; } else if(p.don.active>0){ p.don.active--; p.don.deckCount++; } }
+
+function playEvent(idx,c){
+  const p=S.you, foeP=S.opp;
+  if(p.don.active < c.cost){ toast(`Need ${c.cost} DON for ${c.name}.`); return; }
+
+  const targeted = ["ko2","minus5","ko5","minus9","draw_minus"].includes(c.eff);
+  const hasTarget = foeP.field.length>0;
+  // draw_minus can resolve with no target (just the draw)
+  if(targeted && hasTarget && c.eff!=="draw_minus" || (c.eff==="draw_minus"&&hasTarget)){
+    S.mode={type:"event", card:c, idx};
+    coach(`Choose a target for <b>${c.name}</b> — tap a red-highlighted enemy character.`);
+    render(); return;
+  }
+  if(targeted && !hasTarget && c.eff!=="draw_minus"){ toast("No enemy character to target."); return; }
+  // non-targeted resolution (draw, ko_big, or draw_minus with empty board)
+  payDon(p,c.cost);
+  if(DON_MINUS.includes(c.id)){ returnDon(p); logMsg("me",`(DON−1: returned a DON to your deck → ${p.don.deckCount} in deck)`); }
+  p.hand.splice(idx,1); p.trash.push(c);
+  if(c.eff==="draw"||c.eff==="draw_minus"){ draw(p,1); logMsg("me",`${c.name}: drew 1 card.`); coach("You drew and recycled a DON — that's the engine. Keep the loop going and apply pressure."); }
+  else if(c.eff==="ko_big"){ const k=foeP.field.slice().sort((a,b)=>b.power-a.power).slice(0,2); const n=k.length; k.forEach(t=>koChar(foeP,t)); logMsg("me",`Mamaragan: KO'd ${n} character(s)!`); coach("Finisher used. Swing for the win while their defenses are gone."); }
+  render();
+}
+
+function resolveEventTarget(targetChar){
+  const {card,idx}=S.mode; const p=S.you, foeP=S.opp;
+  payDon(p,card.cost);
+  if(DON_MINUS.includes(card.id)){ returnDon(p); }
+  p.hand.splice(idx,1); p.trash.push(card);
+  if(card.eff==="ko2"){ if(targetChar.cost<=2){ koChar(foeP,targetChar); logMsg("me",`Lightning Dragon KO'd ${targetChar.name}.`);} else toast("Lightning Dragon hits cost ≤2 only."); }
+  else if(card.eff==="ko5"){ if(targetChar.cost<=5){ koChar(foeP,targetChar); logMsg("me",`El Thor KO'd ${targetChar.name}.`);} else toast("El Thor hits cost ≤5 only."); }
+  else if(card.eff==="minus5"){ targetChar.power-=5000; if(targetChar.power<=0) koChar(foeP,targetChar); logMsg("me",`Gamma Knife: ${targetChar.name} −5000${targetChar.power<=0?" → KO'd":""}.`); }
+  else if(card.eff==="minus9"){ targetChar.power-=9000; if(targetChar.power<=0) koChar(foeP,targetChar); logMsg("me",`Divine Departure: ${targetChar.name} −9000${targetChar.power<=0?" → KO'd":""}.`); }
+  else if(card.eff==="draw_minus"){ draw(p,1); targetChar.power-=1000; if(targetChar.power<=0) koChar(foeP,targetChar); logMsg("me",`Kiton: drew 1, ${targetChar.name} −1000.`); }
+  S.mode=null; coach("Threat handled. Keep clearing blockers, then alpha-strike with DON-pumped attackers."); render();
+}
+
+function koChar(p,ch){ const i=p.field.indexOf(ch); if(i>=0){ p.field.splice(i,1); p.trash.push(ch); } }
+
+/* ---------- ATTACHING DON ---------- */
+function toggleAttachMode(){
+  if(S.mode&&S.mode.type==="attach"){ S.mode=null; coach("Stopped attaching."); }
+  else { if(S.you.don.active<=0){ toast("No active DON to attach."); return;} S.mode={type:"attach"}; coach("<b>Attach mode:</b> tap one of YOUR characters (or your Leader) to give it +1000 per DON. Each attach spends 1 active DON for the turn."); }
+  render();
+}
+function attachTo(target){ // target: char obj or 'leader'
+  if(S.you.don.active<=0){ toast("No active DON left."); S.mode=null; render(); return; }
+  S.you.don.active--;
+  if(target==="leader"){ S.you.leader.power+=1000; logMsg("me","Attached DON to Leader (+1000)."); }
+  else { target.don=(target.don||0)+0; target.power+=1000; target.attachShown=(target.attachShown||0)+1; logMsg("me",`Attached DON to ${target.name} (+1000 → ${target.power}).`); }
+  render();
+}
+
+/* ---------- ATTACKING ---------- */
+function clickFieldCard(side, ch){
+  if(S.active!=="you"||S.over) return;
+  // attach mode targeting your own
+  if(S.mode&&S.mode.type==="attach"&&side==="you"){ attachTo(ch); return; }
+  // event targeting enemy
+  if(S.mode&&S.mode.type==="event"&&side==="opp"){ resolveEventTarget(ch); return; }
+  // selecting attacker (your char)
+  if(side==="you"){
+    const myDon=S.you.don.active+S.you.don.rested, opDon=S.opp.don.active+S.opp.don.rested;
+    const shuraRush = ch.id==="shura" && myDon<opDon;
+    if(ch.summon && shuraRush){ toast("Shura has Rush (you have fewer DON) — it can attack!"); ch.summon=false; }
+    if(ch.summon){ toast(`${ch.name} is summoning-sick this turn.`); return; }
+    if(ch.rested){ toast(`${ch.name} already attacked / is rested.`); return; }
+    S.sel={kind:"char",ref:ch}; coach(`Attacking with <b>${ch.name}</b> (${ch.power}). Tap the enemy Leader or a <i>rested</i> enemy character to hit it.`); render(); return;
+  }
+  // side opp: this is an attack target
+  if(side==="opp" && S.sel){ declareAttack(S.sel, {kind:"char",ref:ch}); }
+}
+function clickLeader(side){
+  if(S.active!=="you"||S.over) return;
+  if(S.mode&&S.mode.type==="attach"&&side==="you"){ attachTo("leader"); return; }
+  if(side==="you"){
+    if(S.you.leader.rested){ toast("Leader already attacked."); return; }
+    if(S.turn<2){ toast("Can't attack on your first turn."); return;}
+    S.sel={kind:"leader"}; coach("Attacking with your <b>Leader</b> (5000+). Tap the enemy Leader or a rested enemy character."); render(); return;
+  }
+  if(side==="opp" && S.sel){ declareAttack(S.sel,{kind:"leader"}); }
+}
+
+function declareAttack(att, def){
+  const me=S.you, op=S.opp;
+  const aPow = att.kind==="leader"? me.leader.power : att.ref.power;
+  // rest attacker
+  if(att.kind==="leader") me.leader.rested=true; else att.ref.rested=true;
+  // blocker check
+  const blockers = op.field.filter(c=>c.kw&&c.kw.includes("Blocker")&&!c.rested);
+  if(def.kind==="leader" && blockers.length>0){
+    // opponent auto-blocks if it saves a life and blocker survives or trades favorably
+    const b=blockers.sort((a,b)=>b.power-a.power)[0];
+    b.rested=true;
+    logMsg("op",`Opponent blocks with ${b.name} (${b.power}).`);
+    if(aPow>=b.power){ koChar(op,b); logMsg("me",`Your ${aPow} beats the blocker — KO'd!`); coach("Blocker removed. Your remaining attackers can now hit the leader."); }
+    else { logMsg("op",`Blocker holds (${b.power} vs ${aPow}).`); coach("Their blocker absorbed it. Use removal (Lightning Dragon / Gamma Knife / El Thor) on blockers BEFORE attacking next time."); }
+    S.sel=null; render(); checkWin(); return;
+  }
+  if(def.kind==="leader"){
+    // damage leader: power vs 5000 (leaders always 'hit' for 1 life if >= their power? In OPTCG attacker needs >= defender power)
+    if(aPow>=op.leader.power){ dealLifeDamage(op,1, "op"); logMsg("me",`Hit opponent's Leader for 1 life!`); }
+    else { logMsg("me",`Attack too weak (${aPow} < ${op.leader.power}). Pump with DON next time.`); coach(`Your ${aPow} didn't reach 5000. <b>Attach DON</b> first so your attacks connect.`); }
+  } else {
+    const t=def.ref;
+    if(!t.rested){ toast("You can only attack rested (tapped) enemy characters, or the Leader.");
+      // un-rest the attacker since attack invalid
+      if(att.kind==="leader") me.leader.rested=false; else att.ref.rested=false;
+      S.sel=null; render(); return; }
+    if(aPow>=t.power){ koChar(op,t); logMsg("me",`KO'd ${t.name} in battle!`); }
+    else logMsg("me",`${t.name} survived (${t.power} vs ${aPow}).`);
+  }
+  S.sel=null; render(); checkWin();
+}
+
+function dealLifeDamage(p,n,who){
+  for(let i=0;i<n;i++){
+    if(p.life<=0){ // no life: direct loss
+      finish(who==="op", who==="op"?"You dealt the finishing blow!":"You took lethal damage."); return;
+    }
+    p.life--;
+    if(p===S.you){ // you take a life card to hand (+possible trigger)
+      const card=S.you.deck.length? null:null;
+      // simplified: gain a card from deck top to hand as the life card
+      if(S.you.deck.length){ S.you.hand.push(S.you.deck.pop()); logMsg("op","You lost 1 life (card added to hand)."); }
+    } else {
+      logMsg("me","Opponent lost 1 life.");
+    }
+  }
+}
+
+function checkWin(){
+  if(S.opp.life<=0 && S.opp._pendingLethal){ }
+  // win when opponent at 0 life AND took another hit -> handled in dealLifeDamage finish
+  if(S.opp.life<=0){ finish(true,"Opponent is out of life — you win!"); }
+  if(S.you.life<=0){ /* you may still survive at 0 until next hit; keep simple */ }
+}
+
+function finish(youWin,msg){
+  if(S.over) return; S.over=true;
+  showModal(youWin?"🏆 Victory!":"💀 Defeat", msg + "<br><br>"+(youWin?
+    "You piloted the Enel ramp plan to a win. Try again to master the sequencing.":
+    "Review the coach tips — usually the fix is: ramp + attach DON earlier, and remove blockers before the alpha strike."),
+    "Play again");
+}
+
+/* ---------- OPPONENT AI (simple) ---------- */
+function oppTurn(){
+  if(S.over) return;
+  const op=S.opp, me=S.you;
+  // play a character if affordable (cheapest that fits, prefer biggest affordable)
+  let played=true; let guard=0;
+  while(played && guard++<4){
+    played=false;
+    const affordable=op.hand.filter(c=>c.cost<=op.don.active && op.field.length<6).sort((a,b)=>b.power-a.power);
+    if(affordable.length){ const c=affordable[0]; op.don.active-=c.cost; op.don.rested+=c.cost; op.field.push({...c,rested:false,summon:true,don:0}); op.hand.splice(op.hand.indexOf(c),1); logMsg("op",`Opponent plays ${c.name} (${c.power}).`); played=true; }
+  }
+  render();
+  // attacks
+  setTimeout(()=>{ oppAttacks(); }, 500);
+}
+function oppAttacks(){
+  if(S.over) return;
+  const op=S.opp, me=S.you;
+  const attackers=[ ...(S.turn>=2?[{kind:"leader",pow:op.leader.power}]:[]),
+                    ...op.field.filter(c=>!c.summon&&!c.rested).map(c=>({kind:"char",ref:c,pow:c.power})) ];
+  let i=0;
+  function step(){
+    if(S.over||i>=attackers.length){ logMsg("op","Opponent ends turn."); coach(youCoachStart()); endTurn(); return; }
+    const a=attackers[i++];
+    if(a.kind==="leader") op.leader.rested=true; else a.ref.rested=true;
+    // target your leader (simple). Your blockers may block.
+    const blockers=me.field.filter(c=>c.kw&&c.kw.includes("Blocker")&&!c.rested);
+    if(blockers.length && me.life<=2){ // you'd auto-block low life
+      const b=blockers[0]; b.rested=true; logMsg("me",`You auto-block with ${b.name}.`);
+      if(a.pow>=b.power){ koChar(me,b); logMsg("op",`Your blocker was KO'd.`); }
+      render(); setTimeout(step,450); return;
+    }
+    if(a.pow>=me.leader.power){
+      me.life--; if(me.deck.length) me.hand.push(me.deck.pop());
+      logMsg("op",`Opponent hits YOU — life now ${me.life}.`);
+      if(me.life<0){ finish(false,"You ran out of life."); return; }
+      if(me.life===0){ /* survive at 0 until next hit */ }
+    } else { logMsg("op","Opponent attack bounced off your leader."); }
+    render(); setTimeout(step,450);
+  }
+  step();
+}
+
+/* ---------- COACH TEXT ---------- */
+function youCoachStart(){
+  const p=S.you;
+  if(S.turn===1) return `Turn 1: you have ${p.don.active} DON. <b>Develop a cheap body</b> (Satori / Oten / Franky) and pass. You can't attack on turn 1.`;
+  const tips=[];
+  if(!p.leader.abilityUsed) tips.push("use your <b>Leader Ramp ⚡</b> for extra DON");
+  if(p.hand.some(c=>["kiton","gamma","varie"].includes(c.id))) tips.push("fire a <b>DON−1 event</b> (Kiton/Gamma/Varie) to draw + recycle a DON");
+  tips.push("then <b>attach DON</b> to your attackers and swing");
+  if(S.opp.field.some(c=>c.kw&&c.kw.includes("Blocker"))) tips.push("⚠ they have a <b>Blocker</b> — remove it (Lightning Dragon / Gamma Knife / El Thor) before hitting the leader");
+  if(p.hand.some(c=>c.id==="shura") && (p.don.active+p.don.rested) < (S.opp.don.active+S.opp.don.rested)) tips.push("you have fewer DON — <b>Shura gets Rush</b>, play it and attack now");
+  if(p.don.deckCount===0) tips.push("DON deck empty — lean on DON−1 events to refill it");
+  if(S.opp.life<=2) tips.push("opponent is low — go for <b>lethal</b>: pump everything and swing leader + characters");
+  return `Turn ${S.turn}: `+tips.join("; ")+".";
+}
+function coach(html){ document.getElementById("coachText").innerHTML=html; }
+
+/* ---------- RENDER ---------- */
+function cardEl(c, side, inHand, idx){
+  const colorCls = c.color==="yellow"?"yellow":(c.color==="purpleyellow"?"purpleyellow":"purple");
+  const el=document.createElement("div");
+  el.className=`card ${c.type==="event"?"event":"char"} ${colorCls}`;
+  let cls="";
+  if(!inHand && c.rested) cls+=" rested";
+  if(!inHand && c.summon) cls+=" summon";
+  if(!inHand && side==="you" && c.type!=="event" && !c.summon && !c.rested && S.active==="you" && !S.mode) cls+=" canact";
+  if(S.sel && S.sel.kind==="char" && S.sel.ref===c) cls+=" selected";
+  if(S.mode&&S.mode.type==="event"&&side==="opp"){ // valid targets glow
+    cls+=" target";
+  }
+  if(S.mode&&S.mode.type==="attach"&&side==="you") cls+=" canact";
+  if(S.sel && side==="opp") cls+=" target";
+  el.className+=cls;
+  const kw = c.kw&&c.kw.length? `<div class="kw">${c.kw[0]}</div>`:"";
+  const pw = c.type==="char"? `<div class="pw">${c.power}</div>`:"";
+  const dm = (!inHand && c.attachShown)? `<div class="donmark">◆×${c.attachShown}</div>`:"";
+  el.innerHTML=`<div class="color"></div><div class="cost">${c.cost}</div>${kw}
+    <div class="nm">${c.name}</div><div class="tag">${c.type==="event"?"EVENT":"CHARACTER"}</div>${pw}${dm}`;
+  // handlers
+  if(inHand){ el.onclick=()=>clickHandCard(idx); }
+  else { el.onclick=()=>clickFieldCard(side,c); }
+  return el;
+}
+
+function lifeBar(n){ let s=""; for(let i=0;i<5;i++){ s+=`<i class="${i<n?"":"gone"}"></i>`; } return s; }
+
+function render(){
+  if(!S) return;
+  // opp
+  document.getElementById("oppLife").textContent=S.opp.life;
+  document.getElementById("oppHand").textContent=S.opp.hand.length;
+  document.getElementById("oppDon").textContent=S.opp.don.active+S.opp.don.rested;
+  document.getElementById("oppLifeBar").innerHTML=lifeBar(S.opp.life);
+  document.getElementById("youLife").textContent=S.you.life;
+  document.getElementById("youDonA").textContent=S.you.don.active;
+  document.getElementById("youDonR").textContent=S.you.don.rested;
+  document.getElementById("youLifeBar").innerHTML=lifeBar(S.you.life);
+  // leaders
+  const yl=document.getElementById("youLeader"); yl.className="leadercard"+(S.you.leader.rested?" rested":"")+((S.sel&&"opp")&&"" );
+  yl.querySelector(".lp").textContent=S.you.leader.power;
+  yl.onclick=()=>clickLeader("you");
+  const ol=document.getElementById("oppLeader"); ol.className="leadercard"+(S.opp.leader.rested?" rested":"")+((S.sel)?" target":"");
+  ol.onclick=()=>clickLeader("opp");
+  // fields
+  const of=document.getElementById("oppField"); of.innerHTML=""; of.className="zone"+(S.opp.field.length?"":" empty");
+  S.opp.field.forEach(c=>of.appendChild(cardEl(c,"opp",false)));
+  const yf=document.getElementById("youField"); yf.innerHTML=""; yf.className="zone"+(S.you.field.length?"":" empty");
+  S.you.field.forEach(c=>yf.appendChild(cardEl(c,"you",false)));
+  // hand
+  const h=document.getElementById("hand"); h.innerHTML="";
+  S.you.hand.forEach((c,i)=>h.appendChild(cardEl(c,"you",true,i)));
+  // don row
+  const dr=document.getElementById("donRow"); dr.innerHTML='<span class="donlabel">DON!!</span>';
+  for(let i=0;i<S.you.don.active;i++){ const d=document.createElement("div"); d.className="don"; dr.appendChild(d); }
+  for(let i=0;i<S.you.don.rested;i++){ const d=document.createElement("div"); d.className="don rested"; dr.appendChild(d); }
+  const note=document.createElement("span"); note.className="small"; note.style.marginLeft="6px";
+  note.textContent=`(deck:${S.you.don.deckCount} left)`; dr.appendChild(note);
+  // phase bar
+  document.querySelectorAll("#phasebar span").forEach(s=>s.classList.toggle("on", s.dataset.ph===S.phase));
+  // buttons
+  renderButtons();
+}
+
+function renderButtons(){
+  const wrap=document.getElementById("mainBtns"); wrap.innerHTML="";
+  if(S.over){ wrap.innerHTML='<button class="act" onclick="newGame()">▶ New Game</button>'; return; }
+  if(S.active!=="you"){ wrap.innerHTML='<button class="act" disabled>Opponent thinking…</button>'; return; }
+  const b=(label,cls,fn,dis)=>{ const x=document.createElement("button"); x.className="act "+(cls||""); x.textContent=label; x.disabled=!!dis; x.onclick=fn; wrap.appendChild(x); };
+  if(S.mode&&S.mode.type){ b("✕ Cancel","danger",()=>{S.mode=null;S.sel=null;coach(youCoachStart());render();}); return; }
+  if(S.sel){ b("✕ Cancel Attack","ghost",()=>{S.sel=null;render();}); }
+  b("⚡ Leader Ramp","yel",useLeaderAbility, S.you.leader.abilityUsed||S.turn<2);
+  b("◆ Attach DON","ghost",toggleAttachMode, S.you.don.active<=0);
+  b("End Turn ▶","",endTurn);
+}
+
+/* ---------- UI plumbing ---------- */
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),1700); }
+function logMsg(cls,m){ S.log.unshift({cls,m}); if(S.log.length>40)S.log.pop(); const L=document.getElementById("log"); L.innerHTML=S.log.map(x=>`<div class="${x.cls}">${x.m}</div>`).join(""); }
+function showModal(title,body,btn){ const m=document.getElementById("modal"); m.innerHTML=`<h2>${title}</h2><p>${body}</p><button class="act" id="modalBtn">${btn}</button>`; document.getElementById("overlay").classList.add("show"); document.getElementById("modalBtn").onclick=()=>{ document.getElementById("overlay").classList.remove("show"); newGame(); }; }
+
+document.querySelectorAll("nav button").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("view-"+btn.dataset.view).classList.add("active");
+    document.getElementById("controls").style.display = btn.dataset.view==="play"?"flex":"none";
+  };
+});
+document.getElementById("btnReset").onclick=newGame;
+document.getElementById("btnHelp").onclick=()=>{ coach(youCoachStart()); toast("Coach updated ↑"); };
+
+/* ---------- GUIDE + DECK content ---------- */
+document.getElementById("view-guide").innerHTML = GUIDE_HTML();
+document.getElementById("view-deck").innerHTML = DECK_HTML();
+
+function GUIDE_HTML(){ return `
+<h2>The Enel Game Plan (in one line)</h2>
+<p><b>Loop your tiny 6-card DON deck: the Leader ramps and attaches DON, your cheap "DON−1" events draw cards and recycle DON back into the deck, and you control the board with purple removal until a DON-pumped Enel swings for the win.</b></p>
+<div class="tip">🟣 <b>Your identity: mono-PURPLE = DON!! manipulation.</b> Leader Enel (OP15-058) is built on one twist — your DON!! deck is only <b>6 cards</b>. The whole deck is engineered around making those 6 DON do the work of 10.</div>
+
+<h2>Why this deck is different</h2>
+<ul>
+<li><b>6-card DON!! deck.</b> You can never have more than 6 DON on the field. So you don't out-resource people — you out-<i>tempo</i> them. Every DON must earn value the same turn.</li>
+<li><b>The DON loop.</b> Most of your events say <b>"DON!! −1: If your Leader is Enel, draw 1…"</b>. They draw a card AND <i>return a DON to your deck</i>, so next turn you can set it again. Kiton, Lightning Dragon, Gamma Knife, Varie and El Thor are all engine pieces, not just spells.</li>
+<li><b>DON attaching = your damage.</b> The Leader ability rests up to 4 DON and gives them to your Characters — <b>+1000 power each for the turn</b>. A 7000 Enel with 3 DON swings for 10000.</li>
+<li><b>Shura's hidden Rush.</b> Because your DON deck is small, you usually have <i>fewer</i> DON than the opponent — which turns Shura on, letting it attack the turn it lands. Surprise damage.</li>
+</ul>
+
+<h2>The turn rhythm (do this every turn)</h2>
+<ol>
+<li><b>Refresh</b> — characters and all your DON ready up (attached DON come back).</li>
+<li><b>Draw</b> 1.</li>
+<li><b>Leader Ramp ⚡</b> (from turn 2) — set extra DON from your deck.</li>
+<li><b>Develop</b> — play a body or two. New characters are <i>summoning-sick</i> (can't attack this turn) — except Shura when you're behind on DON.</li>
+<li><b>Run the engine</b> — fire a DON−1 event to draw, recycle a DON, and shrink/kill a blocker.</li>
+<li><b>Attach DON</b> to attackers, then <b>attack</b> the leader / rested characters.</li>
+<li><b>End.</b></li>
+</ol>
+
+<h2>When to use which card</h2>
+<table>
+<tr><th>Card</th><th>Use it when…</th></tr>
+<tr><td><b>Satori (1)</b></td><td>Early — fix your next draws so the engine flows. Also a cheap body to attach DON to.</td></tr>
+<tr><td><b>Oten (2) / Franky (3)</b></td><td>Turns 1–2. Always get a body down early to start pressuring and to attach DON.</td></tr>
+<tr><td><b>Charlotte Pudding (4)</b></td><td>Hand running low. The On-Play draw keeps the loop fed.</td></tr>
+<tr><td><b>Shura (4)</b></td><td>When you have FEWER DON than the opponent — it gets Rush and hits immediately for surprise damage.</td></tr>
+<tr><td><b>Reiju / Law / Enel</b></td><td>Mid-to-late beaters and DON-attach targets. Enel is your finisher body (7000 → 9000–11000 pumped).</td></tr>
+<tr><td><b>Lightning Beast Kiton (1)</b></td><td>Almost every turn — it draws, recycles a DON, and chips a blocker. Pure fuel.</td></tr>
+<tr><td><b>Lightning Dragon (1)</b></td><td>Tempo lock / clear a small (cost ≤2) defender so your attacks connect.</td></tr>
+<tr><td><b>Gamma Knife (2)</b></td><td>DON−1 −5000: clear a blocker or trade up into a mid body. Pairs with Law.</td></tr>
+<tr><td><b>Varie!! (3)</b></td><td>Draw + DON return + buff an Enel. Filler when you have a spare DON.</td></tr>
+<tr><td><b>El Thor (4)</b></td><td>Premium removal — KO a real threat (cost ≤5). Save for their key card.</td></tr>
+<tr><td><b>Divine Departure (5)</b></td><td>−9000 to delete a big finisher you can't out-power.</td></tr>
+<tr><td><b>Mamaragan (6)</b></td><td>Closer — multi-KO their defense, then swing for game.</td></tr>
+<tr><td><b>Senor Pink (5, Blocker)</b></td><td>Vs aggro — drop it to wall and protect your life while you set up.</td></tr>
+</table>
+
+<h2>Reading the board — decision triggers</h2>
+<div class="tip">🛡 <b>They have a Blocker?</b> Remove it FIRST (Lightning Dragon → Gamma Knife → El Thor by cost). Attacking into an open path is how Enel wins the tempo race.</div>
+<div class="tip">🔁 <b>Low on DON?</b> Lead with your DON−1 events (Kiton/Gamma/Varie) — they refund a DON and draw, keeping the engine alive. Don't dump all your DON on bodies and stall.</div>
+<div class="tip">🎯 <b>Opponent life ≤ 2?</b> Stop developing — go all-in. Ramp, attach every DON, swing Leader + all characters for lethal.</div>
+<div class="tip">⚔ <b>Fewer DON than them?</b> Good — that's Shura's Rush window. Drop it and swing the same turn.</div>
+
+<h2>Mulligan (opening hand)</h2>
+<p>Keep hands with a <b>turn 1–2 play</b> (Satori, Oten, Franky) plus at least one <b>DON−1 engine event</b> (Kiton / Gamma Knife) so you can start looping. Toss hands that are all 4–6 drops — with a 6-DON deck you can't reliably power them out early.</p>
+
+<h2>Matchup notes</h2>
+<ul>
+<li><b>vs Aggro:</b> Lead with Senor Pink (Blocker) + removal to trade, stabilize, then take over with Enel.</li>
+<li><b>vs Control / Big decks:</b> Be the aggressor. Loop DON, develop, and race their life before they stabilize. Don't over-extend into a board wipe — Pudding/Kiton refill, so play around it.</li>
+</ul>
+<div class="tip">✅ <b>Color check:</b> Every card here is <b>purple</b> (Sky Island + a small Heart Pirates removal package: Trafalgar Law &amp; Gamma Knife). Fully legal under the mono-purple Enel leader — no off-color cards.</div>
+`;}
+
+function DECK_HTML(){
+  const order=["satori","oten","franky","pudding","shura","reiju","law","enel","senor",
+    "kiton","ldragon","gamma","varie","elthor","divine","mamaragan"];
+  const counts={satori:2,oten:4,franky:3,pudding:4,shura:4,reiju:4,law:2,enel:4,senor:2,
+    kiton:4,ldragon:4,gamma:3,varie:3,elthor:4,divine:1,mamaragan:2};
+  let chars="", events="";
+  order.forEach(k=>{ const c=DB[k]; const colBadge = c.color==="yellow"?'<span class="badge b-y">Yellow</span>':'<span class="badge b-p">Purple</span>';
+    const kw = c.kw&&c.kw.length?` <span class="badge b-c">${c.kw[0]}</span>`:"";
+    const html=`<div class="dcard"><div class="top"><span class="nm">${c.name}</span><span class="qty">×${counts[k]}</span></div>
+      <div class="meta">${colBadge}${kw} · cost ${c.cost}${c.type==="char"?` · ${c.power} power`:" · EVENT"}</div>
+      <div class="role">${c.role}</div></div>`;
+    if(c.type==="char") chars+=html; else events+=html;
+  });
+  const total=Object.values(counts).reduce((a,b)=>a+b,0);
+  return `
+  <h2>Leader</h2>
+  <div class="dcard"><div class="top"><span class="nm">Enel — Sky Island</span><span class="qty">OP15-058 · 5000</span></div>
+  <div class="meta"><span class="badge b-p">Purple</span> · Leader</div>
+  <div class="role"><b>Under the rules of this game, your DON!! deck consists of 6 cards.</b><br>
+  <b>[Activate: Main] [Once Per Turn]</b> From your 2nd turn: add up to 1 DON!! from your DON!! deck as active, and add up to 4 more rested. Then <b>give those rested DON!! to up to 4 of your Characters</b> (+1000 each). The engine that powers the whole deck.</div></div>
+
+  <div class="sectionlabel">Characters (${Object.keys(counts).filter(k=>DB[k].type==='char').reduce((a,k)=>a+counts[k],0)})</div>
+  <div class="deckgrid">${chars}</div>
+  <div class="sectionlabel">Events (${Object.keys(counts).filter(k=>DB[k].type==='event').reduce((a,k)=>a+counts[k],0)})</div>
+  <div class="deckgrid">${events}</div>
+  <p class="small" style="margin-top:10px;">Main deck: ${total} cards. Names &amp; colors confirmed from your close-up photos (OP15 Purple Sky Island). Exact copy-counts are best reads — tweak in your deckbuilder to match your list precisely.</p>
+  <div class="tip">✅ 100% purple — Sky Island core + a Heart Pirates removal splash (Trafalgar Law, Gamma Knife). Fully legal under the mono-purple Enel leader.</div>
+  `;
+}
+
+/* boot */
+newGame();
+</script>
+</body>
+</html>
