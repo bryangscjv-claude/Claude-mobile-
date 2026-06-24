@@ -192,6 +192,7 @@
             <span class="pill life">❤ Life <b id="oppLife">5</b></span>
             <span class="pill">✋ Hand <b id="oppHand">0</b></span>
             <span class="pill donpill">◆ DON <b id="oppDon">0</b></span>
+            <span class="pill" id="lethalBadge" style="display:none;"></span>
           </div>
           <div class="lifebar" id="oppLifeBar"></div>
         </div>
@@ -368,8 +369,15 @@ function newGame(){
 function startTurn(){
   const p=cur();
   p.leader.rested=false; p.leader.abilityUsed=false;
-  // refresh: ready chars, return attached DON to active, rested->active
-  p.field.forEach(c=>{ c.rested=false; if(c.summon) c.summon=false; if(c.don){ p.don.active+=c.don; c.don=0; } });
+  // refresh: ready chars, return attached/given DON to active, reset temporary power
+  p.field.forEach(c=>{
+    c.rested=false; if(c.summon) c.summon=false;
+    if(c.don){ p.don.active+=c.don; c.don=0; }      // given DON return as active
+    c.attachShown=0;
+    if(c.basePower!=null) c.power=c.basePower;       // clear pumps & temporary debuffs
+  });
+  if(p.leader.donAttached){ p.don.active+=p.leader.donAttached; p.leader.donAttached=0; }
+  p.leader.power = 5000;                              // reset leader pump
   p.don.active += p.don.rested; p.don.rested=0;
   S.phase="refresh"; render();
   // draw (skip very first turn for the player on the play)
@@ -419,7 +427,7 @@ function clickHandCard(idx){
     if(S.you.field.length>=6){ toast("Board is full (6)."); return; }
     if(S.you.don.active < c.cost){ toast(`Need ${c.cost} DON (have ${S.you.don.active}).`); return; }
     payDon(S.you,c.cost);
-    const ch={...c, rested:false, summon:true, don:0};
+    const ch={...c, rested:false, summon:true, don:0, basePower:c.power, attachShown:0};
     S.you.field.push(ch); S.you.hand.splice(idx,1);
     logMsg("me",`Played ${c.name} (${c.power}).`);
     // 1-cost draw bodies: On Play DON−1 → draw and recycle a DON
@@ -487,11 +495,18 @@ function toggleAttachMode(){
   else { if(S.you.don.active<=0){ toast("No active DON to attach."); return;} S.mode={type:"attach"}; coach("<b>Attach mode:</b> tap one of YOUR characters (or your Leader) to give it +1000 per DON. Each attach spends 1 active DON for the turn."); }
   render();
 }
-function attachTo(target){ // target: char obj or 'leader'
+function attachTo(target){ // target: char obj or 'leader' — DON is 'given' for the turn (+1000 each), returns on refresh
   if(S.you.don.active<=0){ toast("No active DON left."); S.mode=null; render(); return; }
   S.you.don.active--;
-  if(target==="leader"){ S.you.leader.power+=1000; logMsg("me","Attached DON to Leader (+1000)."); }
-  else { target.don=(target.don||0)+0; target.power+=1000; target.attachShown=(target.attachShown||0)+1; logMsg("me",`Attached DON to ${target.name} (+1000 → ${target.power}).`); }
+  if(target==="leader"){
+    S.you.leader.donAttached=(S.you.leader.donAttached||0)+1;
+    S.you.leader.power=5000+1000*S.you.leader.donAttached;
+    logMsg("me",`Gave DON to Leader (+1000 → ${S.you.leader.power}).`);
+  } else {
+    target.don=(target.don||0)+1; target.attachShown=target.don;
+    target.power=(target.basePower!=null?target.basePower:target.power)+1000*target.don;
+    logMsg("me",`Gave DON to ${target.name} (+1000 → ${target.power}).`);
+  }
   render();
 }
 
@@ -533,13 +548,19 @@ function declareAttack(att, def){
   // blocker check
   const blockers = op.field.filter(c=>c.kw&&c.kw.includes("Blocker")&&!c.rested);
   if(def.kind==="leader" && blockers.length>0){
-    // opponent auto-blocks if it saves a life and blocker survives or trades favorably
-    const b=blockers.sort((a,b)=>b.power-a.power)[0];
-    b.rested=true;
-    logMsg("op",`Opponent blocks with ${b.name} (${b.power}).`);
-    if(aPow>=b.power){ koChar(op,b); logMsg("me",`Your ${aPow} beats the blocker — KO'd!`); coach("Blocker removed. Your remaining attackers can now hit the leader."); }
-    else { logMsg("op",`Blocker holds (${b.power} vs ${aPow}).`); coach("Their blocker absorbed it. Use removal (Lightning Dragon / Gamma Knife / El Thor) on blockers BEFORE attacking next time."); }
-    S.sel=null; render(); checkWin(); return;
+    // smarter AI: only block if a blocker survives (free block) or it must stop lethal — no wasteful chump blocks
+    const survivors = blockers.filter(b=>b.power>aPow).sort((a,b)=>a.power-b.power);
+    const mustBlock = op.life<=1;
+    if(survivors.length || mustBlock){
+      const b = survivors.length ? survivors[0] : blockers.sort((a,b)=>b.power-a.power)[0];
+      b.rested=true;
+      logMsg("op",`Opponent blocks with ${b.name} (${b.power}).`);
+      if(aPow>=b.power){ koChar(op,b); logMsg("me",`Your ${aPow} beats the blocker — KO'd!`); coach("Blocker traded away — keep swinging at the leader."); }
+      else { logMsg("op",`Blocker holds (${b.power} vs ${aPow}).`); coach("Their blocker survived. Shrink/KO blockers first (Ohm / Gamma Knife / El Thor / Mamaragan) before attacking."); }
+      S.sel=null; render(); checkWin(); return;
+    }
+    // opponent declines to block and takes the hit — fall through to leader damage
+    logMsg("op","Opponent takes the hit (won't waste a blocker).");
   }
   if(def.kind==="leader"){
     // damage leader: power vs 5000 (leaders always 'hit' for 1 life if >= their power? In OPTCG attacker needs >= defender power)
@@ -573,6 +594,43 @@ function dealLifeDamage(p,n,who){
   }
 }
 
+/* ---------- LETHAL CALCULATOR ---------- */
+function lethalInfo(){
+  const me=S.you, op=S.opp;
+  // attackers that can attack THIS turn
+  const list=[];
+  if(S.turn>=2 && !me.leader.rested) list.push(me.leader.power);
+  me.field.forEach(c=>{
+    if(c.rested) return;
+    const canAttack = !c.summon || (c.id==="shura" && (me.don.active+me.don.rested+me.field.reduce((a,x)=>a+(x.attachShown||0),0))<=6);
+    if(canAttack) list.push(c.power);
+  });
+  // greedily pump with active DON to get as many attackers as possible to >= 5000
+  let don=me.don.active;
+  const powers=list.slice().sort((a,b)=>b-a); // pump those nearest first → sort desc, fill deficits
+  const deficits=powers.map(p=>Math.max(0,5000-p)).filter(d=>d>0).sort((a,b)=>a-b);
+  let reachable=powers.filter(p=>p>=5000).length;
+  for(const d of deficits){ const need=Math.ceil(d/1000); if(don>=need){ don-=need; reachable++; } }
+  const oppBlockers=op.field.filter(c=>c.kw&&c.kw.includes("Blocker")&&!c.rested).length;
+  const hits=Math.max(0, reachable-oppBlockers);
+  const need=op.life;
+  return {hits, need, reachable, oppBlockers, canLethal: need>0 && hits>=need};
+}
+function renderLethal(){
+  const el=document.getElementById("lethalBadge"); if(!el) return;
+  if(S.over||S.active!=="you"||S.turn<2){ el.style.display="none"; return; }
+  const L=lethalInfo();
+  el.style.display="inline-flex";
+  if(L.canLethal){
+    el.textContent="⚡ LETHAL!"; el.style.background="var(--green)"; el.style.color="#04210f"; el.style.fontWeight="800";
+    el.style.borderColor="var(--green)";
+  } else if(L.hits>0){
+    el.textContent=`swing ~${L.hits}/${L.need}`; el.style.background="var(--panel2)"; el.style.color="var(--muted)"; el.style.fontWeight="700"; el.style.borderColor="var(--line)";
+  } else {
+    el.style.display="none";
+  }
+}
+
 function checkWin(){
   if(S.opp.life<=0 && S.opp._pendingLethal){ }
   // win when opponent at 0 life AND took another hit -> handled in dealLifeDamage finish
@@ -588,45 +646,62 @@ function finish(youWin,msg){
     "Play again");
 }
 
-/* ---------- OPPONENT AI (simple) ---------- */
+/* ---------- OPPONENT AI (tactical) ---------- */
 function oppTurn(){
   if(S.over) return;
-  const op=S.opp, me=S.you;
-  // play a character if affordable (cheapest that fits, prefer biggest affordable)
-  let played=true; let guard=0;
-  while(played && guard++<4){
+  const op=S.opp;
+  // 1) develop: best curve, fill the board, but keep ~1 DON if a removal-ish play exists (kept simple)
+  let played=true, guard=0;
+  while(played && guard++<6){
     played=false;
-    const affordable=op.hand.filter(c=>c.cost<=op.don.active && op.field.length<6).sort((a,b)=>b.power-a.power);
-    if(affordable.length){ const c=affordable[0]; op.don.active-=c.cost; op.don.rested+=c.cost; op.field.push({...c,rested:false,summon:true,don:0}); op.hand.splice(op.hand.indexOf(c),1); logMsg("op",`Opponent plays ${c.name} (${c.power}).`); played=true; }
+    const aff=op.hand.filter(c=>c.cost<=op.don.active && op.field.length<6).sort((a,b)=>b.power-a.power);
+    if(aff.length){ const c=aff[0]; op.don.active-=c.cost; op.don.rested+=c.cost;
+      op.field.push({...c,rested:false,summon:true,don:0,basePower:c.power,attachShown:0});
+      op.hand.splice(op.hand.indexOf(c),1); logMsg("op",`Opponent plays ${c.name} (${c.power}).`); played=true; }
+  }
+  // 2) push: give leftover DON to its biggest ready attacker for extra pressure
+  const ready=op.field.filter(c=>!c.summon&&!c.rested).sort((a,b)=>b.power-a.power);
+  if(ready.length && op.don.active>0){
+    const t=ready[0], n=op.don.active;
+    t.don=(t.don||0)+n; t.attachShown=t.don; t.power=(t.basePower||t.power)+1000*t.don;
+    op.don.rested+=n; op.don.active=0;
+    logMsg("op",`Opponent powers up ${t.name} (+${n*1000} → ${t.power}).`);
   }
   render();
-  // attacks
-  setTimeout(()=>{ oppAttacks(); }, 500);
+  setTimeout(oppAttacks,550);
 }
 function oppAttacks(){
   if(S.over) return;
   const op=S.opp, me=S.you;
   const attackers=[ ...(S.turn>=2?[{kind:"leader",pow:op.leader.power}]:[]),
-                    ...op.field.filter(c=>!c.summon&&!c.rested).map(c=>({kind:"char",ref:c,pow:c.power})) ];
+                    ...op.field.filter(c=>!c.summon&&!c.rested).map(c=>({kind:"char",ref:c,pow:c.power})) ]
+                  .sort((a,b)=>b.pow-a.pow); // hit hardest first
   let i=0;
   function step(){
     if(S.over||i>=attackers.length){ logMsg("op","Opponent ends turn."); coach(youCoachStart()); endTurn(); return; }
     const a=attackers[i++];
     if(a.kind==="leader") op.leader.rested=true; else a.ref.rested=true;
-    // target your leader (simple). Your blockers may block.
+    // TARGETING: KO one of your rested characters if it's a profitable removal (esp. blockers / big bodies); else face
+    const yourRested = me.field.filter(c=>c.rested && a.pow>=c.power)
+                         .sort((x,y)=>(y.kw&&y.kw.includes("Blocker")?1:0)-(x.kw&&x.kw.includes("Blocker")?1:0) || y.power-x.power);
+    const killBlocker = yourRested.find(c=>c.kw&&c.kw.includes("Blocker"));
+    const target = killBlocker || (yourRested[0] && yourRested[0].power>=5000 ? yourRested[0] : null);
+    if(target){ koChar(me,target); logMsg("op",`Opponent attacks & KOs your ${target.name}.`); render(); setTimeout(step,420); return; }
+    // else attack your leader; your blockers auto-defend (block if it survives, or to prevent lethal)
     const blockers=me.field.filter(c=>c.kw&&c.kw.includes("Blocker")&&!c.rested);
-    if(blockers.length && me.life<=2){ // you'd auto-block low life
-      const b=blockers[0]; b.rested=true; logMsg("me",`You auto-block with ${b.name}.`);
-      if(a.pow>=b.power){ koChar(me,b); logMsg("op",`Your blocker was KO'd.`); }
-      render(); setTimeout(step,450); return;
+    const survivor=blockers.find(b=>b.power>a.pow);
+    if(survivor || (blockers.length && me.life<=1)){
+      const b=survivor||blockers.sort((x,y)=>y.power-x.power)[0]; b.rested=true;
+      logMsg("me",`You auto-block with ${b.name} (${b.power}).`);
+      if(a.pow>=b.power){ koChar(me,b); logMsg("op","Your blocker was KO'd."); }
+      render(); setTimeout(step,420); return;
     }
     if(a.pow>=me.leader.power){
       me.life--; if(me.deck.length) me.hand.push(me.deck.pop());
       logMsg("op",`Opponent hits YOU — life now ${me.life}.`);
       if(me.life<0){ finish(false,"You ran out of life."); return; }
-      if(me.life===0){ /* survive at 0 until next hit */ }
-    } else { logMsg("op","Opponent attack bounced off your leader."); }
-    render(); setTimeout(step,450);
+    } else { logMsg("op","Opponent's attack bounced off your leader."); }
+    render(); setTimeout(step,420);
   }
   step();
 }
@@ -712,6 +787,8 @@ function render(){
   document.querySelectorAll("#phasebar span").forEach(s=>s.classList.toggle("on", s.dataset.ph===S.phase));
   // buttons
   renderButtons();
+  // lethal calculator badge
+  renderLethal();
 }
 
 function renderButtons(){

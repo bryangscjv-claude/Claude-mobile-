@@ -8,12 +8,16 @@ Built from your deck photos (sourced from the
 
 ## How to open it
 
-It's a single self-contained file — no install, no internet needed.
+It's a single self-contained file — no install needed.
 
-- **On your phone:** open `index.html` in any mobile browser (Safari/Chrome).
-- **On desktop:** double-click `index.html`.
+**Easiest (tap to play, renders live):**
+https://raw.githack.com/bryangscjv-claude/Claude-mobile-/claude/optcg-deck-strategy-sim-z8wdi4/index.html
 
-> Tip: on iPhone you can "Add to Home Screen" so it opens like an app.
+**Or open the file directly:**
+- On your phone/desktop, download `index.html` from GitHub and open it in any browser.
+- A double-tap on the downloaded file works offline too.
+
+> Tip: on iPhone, after it loads tap Share → "Add to Home Screen" so it opens like an app.
 
 ## What's inside
 
@@ -21,7 +25,7 @@ Three tabs:
 
 | Tab | What it does |
 |-----|--------------|
-| ▶ **Play** | A full practice match vs an AI. A **Coach** banner tells you the best play every step — ramp, attach DON, remove blockers, when to go for lethal. |
+| ▶ **Play** | A full practice match vs a tactical AI. A **Coach** banner tells you the best play every step, and a **⚡ LETHAL** badge over the opponent's life lights up the moment you have a kill on board (it accounts for blockers and DON pumps). Tap **🎓 Tutorial** for an 8-step guided walkthrough. |
 | 📘 **Strategy** | The complete written game plan: the DON loop, the turn rhythm, a "when to use which card" table, board-reading triggers, mulligan & matchup notes. |
 | 🃏 **Deck** | Your full 50-card list with each card's role explained. |
 
